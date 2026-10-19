@@ -15,9 +15,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Hörproben erzeugen
         env:
-          KEY: ${{ secrets.OPENAI_API_KEY || secrets.OPENAI_KEY || secrets.OPENAI || secrets.OPENAI_TOKEN }}
+          KEY: ${{ secrets.ROCCOGITAREDI || secrets.OPENAI_API_KEY }}
         run: |
-          if [ -z "$KEY" ]; then echo "::error::Kein OpenAI-Secret gefunden. Erwartet wird OPENAI_API_KEY."; exit 1; fi
+          if [ -z "$KEY" ]; then echo "::error::Kein OpenAI-Secret gefunden. Erwartet wird ROCCOGITAREDI (Actions → Repository secret)."; exit 1; fi
           mkdir -p tts-test
           say() { # $1 Datei, $2 Stimme, $3 Sprechanweisung, $4 Text
             jq -n --arg v "$2" --arg i "$3" --arg t "$4" \
