@@ -21,13 +21,18 @@ def tts(text, voice, instructions):
         req = urllib.request.Request("https://api.openai.com/v1/audio/speech", data=body,
                                      headers={"Authorization": f"Bearer {KEY}", "Content-Type": "application/json"})
         try:
-            with urllib.request.urlopen(req, timeout=120) as r:
+            with urllib.request.urlopen(req, timeout=60) as r:
                 return r.read()
         except urllib.error.HTTPError as e:
             if e.code in (429, 500, 502, 503) and attempt < 5:
                 time.sleep(2 ** attempt)
                 continue
             raise RuntimeError(f"HTTP {e.code}: {e.read()[:300]!r}")
+        except (TimeoutError, OSError):  # Verbindung hängt oder bricht ab: nochmal versuchen
+            if attempt < 5:
+                time.sleep(2 ** attempt)
+                continue
+            raise
 
 def shrink(mp3):
     with tempfile.TemporaryDirectory() as d:
@@ -40,14 +45,24 @@ def main():
     catalog = json.load(open("tts/catalog.json", encoding="utf-8"))
     os.makedirs("tts/out", exist_ok=True)
     for group, texts in catalog.items():
+        path = f"tts/out/voices-{group}.json"
+        out = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else {}
+        todo = [t for t in texts if t not in out]  # schon vertonte Sätze überspringen
         voice, instructions = VOICES[group]
-        out = {}
-        with cf.ThreadPoolExecutor(max_workers=4) as pool:
-            futures = {pool.submit(lambda t: shrink(tts(t, voice, instructions)), t): t for t in texts}
+        failed = 0
+        with cf.ThreadPoolExecutor(max_workers=6) as pool:
+            futures = {pool.submit(lambda t: shrink(tts(t, voice, instructions)), t): t for t in todo}
             for f in cf.as_completed(futures):
-                out[futures[f]] = base64.b64encode(f.result()).decode()
-        json.dump(out, open(f"tts/out/voices-{group}.json", "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
-        print(group, len(out), "Sätze", os.path.getsize(f"tts/out/voices-{group}.json") // 1024, "KB", flush=True)
+                try:
+                    out[futures[f]] = base64.b64encode(f.result()).decode()
+                except Exception as e:  # einzelner Satz fehlt: im Spiel spricht dann die Gerätestimme
+                    failed += 1
+                    print("Fehler:", futures[f][:60], e, flush=True)
+        json.dump(out, open(path, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+        subprocess.run(["git", "add", path], check=True)
+        subprocess.run(["git", "commit", "-q", "-m", f"Rocko vertont: Stimme {group} [skip ci]"], check=False)
+        subprocess.run(["git", "push", "-q"], check=False)
+        print(group, len(out), "Sätze,", failed, "fehlgeschlagen,", os.path.getsize(path) // 1024, "KB", flush=True)
 
 if __name__ == "__main__":
     sys.exit(main())
