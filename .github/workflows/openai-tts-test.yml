@@ -1,0 +1,37 @@
+name: OpenAI TTS Test
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/openai-tts-test.yml
+
+jobs:
+  tts:
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.RoccoGitaredi }}
+    steps:
+      - name: Secret vorhanden?
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "❌ Secret RoccoGitaredi fehlt oder ist leer"
+            exit 1
+          fi
+          echo "✅ Secret ist gesetzt"
+
+      - name: Text-to-Speech (gpt-4o-mini-tts)
+        run: |
+          curl -sS --fail-with-body https://api.openai.com/v1/audio/speech \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"model":"gpt-4o-mini-tts","voice":"alloy","input":"Hallo, das ist ein Test der OpenAI Sprachausgabe."}' \
+            -o test.mp3
+          ls -l test.mp3
+          echo "✅ TTS funktioniert"
+
+      - name: Audio als Artefakt speichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: tts-test
+          path: test.mp3
