@@ -1,12 +1,13 @@
 """Vertont alle Sätze von Rocko mit OpenAI-TTS.
 
 Liest tts/catalog.json ({Gruppe: [Sätze]}), erzeugt pro Satz eine MP3-Datei,
-verkleinert sie mit ffmpeg (Mono, 32 kbit/s) und schreibt pro Stimmgruppe
+beschleunigt und verkleinert sie mit ffmpeg (1,5-fach, Mono, 32 kbit/s) und schreibt pro Stimmgruppe
 tts/out/voices-<Gruppe>.json ({Satz: MP3 als Base64}).
 """
 import base64, concurrent.futures as cf, json, os, subprocess, sys, tempfile, time, urllib.request, urllib.error
 
 KEY = os.environ["KEY"]
+TEMPO = 1.5  # Rocko spricht 1,5-mal so schnell, Tonhöhe bleibt (siehe tts/speed.py)
 VOICES = {
     "K": ("coral", "Sprich Deutsch wie ein fröhliches, aufgewecktes Kind von etwa sieben Jahren: hell, verspielt, langsam und deutlich."),
     "J": ("verse", "Sprich Deutsch wie ein lockerer, motivierter Jugendlicher von etwa vierzehn Jahren, frech und gut gelaunt."),
@@ -38,7 +39,8 @@ def shrink(mp3):
     with tempfile.TemporaryDirectory() as d:
         src, dst = os.path.join(d, "a.mp3"), os.path.join(d, "b.mp3")
         open(src, "wb").write(mp3)
-        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", src, "-ac", "1", "-b:a", "32k", dst], check=True)
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", src, "-filter:a", f"atempo={TEMPO}",
+                        "-ac", "1", "-b:a", "32k", dst], check=True)
         return open(dst, "rb").read()
 
 def main():
