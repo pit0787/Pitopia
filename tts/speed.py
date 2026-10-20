@@ -1,6 +1,6 @@
 """Beschleunigt alle vorhandenen Aufnahmen (tts/out/voices-*.json) ohne Tonhöhenänderung (ffmpeg atempo).
 
-Aufruf: python3 tts/speed.py 1.5
+Aufruf: python3 tts/speed.py 1.3 (immer auf die Original-Aufnahmen anwenden)
 """
 import base64, concurrent.futures as cf, json, subprocess, sys, tempfile, os
 

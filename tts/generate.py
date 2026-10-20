@@ -1,13 +1,13 @@
 """Vertont alle Sätze von Rocko mit OpenAI-TTS.
 
 Liest tts/catalog.json ({Gruppe: [Sätze]}), erzeugt pro Satz eine MP3-Datei,
-beschleunigt und verkleinert sie mit ffmpeg (1,5-fach, Mono, 32 kbit/s) und schreibt pro Stimmgruppe
+beschleunigt und verkleinert sie mit ffmpeg (1,3-fach, Mono, 32 kbit/s) und schreibt pro Stimmgruppe
 tts/out/voices-<Gruppe>.json ({Satz: MP3 als Base64}).
 """
 import base64, concurrent.futures as cf, json, os, subprocess, sys, tempfile, time, urllib.request, urllib.error
 
 KEY = os.environ["KEY"]
-TEMPO = 1.5  # Rocko spricht 1,5-mal so schnell, Tonhöhe bleibt (siehe tts/speed.py)
+TEMPO = 1.3  # Rocko spricht 1,3-mal so schnell, Tonhöhe bleibt (siehe tts/speed.py)
 VOICES = {
     "K": ("coral", "Sprich Deutsch wie ein fröhliches, aufgewecktes Kind von etwa sieben Jahren: hell, verspielt, langsam und deutlich."),
     "J": ("verse", "Sprich Deutsch wie ein lockerer, motivierter Jugendlicher von etwa vierzehn Jahren, frech und gut gelaunt."),
