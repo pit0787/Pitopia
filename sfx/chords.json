@@ -1,11 +1,42 @@
 [
  {
-  "title": "File:Wild chord progression A-D-E.ogg",
-  "license": "CC BY-SA 4.0",
-  "artist": "Jules Grandgagnage",
-  "url": "https://upload.wikimedia.org/wikipedia/commons/a/af/Wild_chord_progression_A-D-E.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
-  "page": "https://commons.wikimedia.org/wiki/File:Wild_chord_progression_A-D-E.ogg",
-  "desc": "example of chord progression A-D-E",
-  "file": "sfx/chord-3.mp3"
+  "file": "sfx/chord-1.mp3",
+  "title": "File:A-major.ogg",
+  "license": "Public domain",
+  "artist": "WBOSITG",
+  "page": "https://commons.wikimedia.org/wiki/File:A-major.ogg",
+  "desc": "The chord of A major played on an acoustic guitar."
+ },
+ {
+  "file": "sfx/chord-2.mp3",
+  "title": "File:E-major.ogg",
+  "license": "Public domain",
+  "artist": "WBOSITG",
+  "page": "https://commons.wikimedia.org/wiki/File:E-major.ogg",
+  "desc": "The chord of E major played on an acoustic guitar."
+ },
+ {
+  "file": "sfx/chord-3.mp3",
+  "title": "File:G-Em-C-D-Dur.ogg",
+  "license": "CC BY 3.0",
+  "artist": "XRyuichix",
+  "page": "https://commons.wikimedia.org/wiki/File:G-Em-C-D-Dur.ogg",
+  "desc": "Chord change G-Em-C-D"
+ },
+ {
+  "file": "sfx/chord-4.mp3",
+  "title": "File:G-Em.ogg",
+  "license": "CC BY 3.0",
+  "artist": "XRyuichix",
+  "page": "https://commons.wikimedia.org/wiki/File:G-Em.ogg",
+  "desc": "Chord change G-Em"
+ },
+ {
+  "file": "sfx/chord-5.mp3",
+  "title": "File:G-Em faster.ogg",
+  "license": "CC BY 3.0",
+  "artist": "XRyuichix",
+  "page": "https://commons.wikimedia.org/wiki/File:G-Em_faster.ogg",
+  "desc": "Chord change G-Em faster"
  }
 ]
