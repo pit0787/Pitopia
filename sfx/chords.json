@@ -1,42 +1,10 @@
 [
  {
-  "file": "sfx/chord-1.mp3",
-  "title": "File:A-major.ogg",
-  "license": "Public domain",
-  "artist": "WBOSITG",
-  "page": "https://commons.wikimedia.org/wiki/File:A-major.ogg",
-  "desc": "The chord of A major played on an acoustic guitar."
- },
- {
-  "file": "sfx/chord-2.mp3",
-  "title": "File:E-major.ogg",
-  "license": "Public domain",
-  "artist": "WBOSITG",
-  "page": "https://commons.wikimedia.org/wiki/File:E-major.ogg",
-  "desc": "The chord of E major played on an acoustic guitar."
- },
- {
-  "file": "sfx/chord-3.mp3",
-  "title": "File:G-Em-C-D-Dur.ogg",
-  "license": "CC BY 3.0",
-  "artist": "XRyuichix",
-  "page": "https://commons.wikimedia.org/wiki/File:G-Em-C-D-Dur.ogg",
-  "desc": "Chord change G-Em-C-D"
- },
- {
-  "file": "sfx/chord-4.mp3",
-  "title": "File:G-Em.ogg",
-  "license": "CC BY 3.0",
-  "artist": "XRyuichix",
-  "page": "https://commons.wikimedia.org/wiki/File:G-Em.ogg",
-  "desc": "Chord change G-Em"
- },
- {
-  "file": "sfx/chord-5.mp3",
-  "title": "File:G-Em faster.ogg",
-  "license": "CC BY 3.0",
-  "artist": "XRyuichix",
-  "page": "https://commons.wikimedia.org/wiki/File:G-Em_faster.ogg",
-  "desc": "Chord change G-Em faster"
+  "file": "sfx/chord-8.mp3",
+  "title": "File:E minor.ogg",
+  "license": "CC BY-SA 3.0",
+  "artist": "AkuYukisama",
+  "page": "https://commons.wikimedia.org/wiki/File:E_minor.ogg",
+  "desc": "First A section of an A-B-A' symphony in E minor."
  }
 ]
