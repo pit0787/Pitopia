@@ -34,18 +34,19 @@ def loudest(src, length=2.3):
 
 def main():
     seen, cands = set(), []
-    for q in ["applause cheering", "applause crowd cheer", "audience applause", "applause"]:
+    for q in ["applause cheering", "crowd cheering", "cheering", "audience applause", "applause", "Beifall", "Jubel", "concert crowd", "ovation", "clapping"]:
         for p in search(q):
             if p["title"] in seen or not p.get("imageinfo"): continue
             seen.add(p["title"]); ii = p["imageinfo"][0]; m = ii.get("extmetadata", {})
             lic = clean(m.get("LicenseShortName", {}).get("value"))
+            print("  gefunden:", p["title"], "|", lic)
             if not lic.lower().startswith(FREE): continue
             cands.append({"title": p["title"], "license": lic, "artist": clean(m.get("Artist", {}).get("value")),
                           "url": ii["url"], "page": ii.get("descriptionurl"), "desc": clean(m.get("ImageDescription", {}).get("value"))[:200]})
     print(len(cands), "freie Kandidaten")
     os.makedirs("sfx", exist_ok=True)
     keep = []
-    for c in cands[:12]:
+    for c in cands[:20]:
         n = len(keep) + 1; raw = f"/tmp/raw{n}"
         try:
             with urllib.request.urlopen(urllib.request.Request(c["url"], headers=UA), timeout=60) as r, open(raw, "wb") as f:
