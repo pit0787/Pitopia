@@ -23,7 +23,7 @@ def fetch(url, tries=6):
 def clean(h):
     return re.sub(r"<[^>]+>", "", h or "").strip()
 
-TITLES = ["File:E-major.ogg", "File:A-major.ogg", "File:G-Em.ogg", "File:G-Em faster.ogg", "File:G-Em-C-D-Dur.ogg"]
+TITLES = ["File:E-minor.ogg", "File:A-minor.ogg", "File:D-minor.ogg", "File:E minor.ogg", "File:Em.ogg", "File:E-moll.ogg", "File:E minor chord.ogg", "File:Em chord.ogg"]
 
 def main():
     q = urllib.parse.urlencode({"action": "query", "titles": "|".join(TITLES), "prop": "imageinfo", "iiprop": "url|extmetadata", "format": "json"})
