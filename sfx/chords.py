@@ -23,33 +23,20 @@ def fetch(url, tries=6):
 def clean(h):
     return re.sub(r"<[^>]+>", "", h or "").strip()
 
+TITLES = ["File:E-major.ogg", "File:A-major.ogg", "File:G-Em.ogg", "File:G-Em faster.ogg", "File:G-Em-C-D-Dur.ogg"]
+
 def main():
-    seen, cands = set(), []
-    for q in QUERIES:
-        p = urllib.parse.urlencode({"action": "query", "generator": "search", "gsrsearch": f"{q} filetype:audio", "gsrnamespace": 6,
-                                    "gsrlimit": 30, "prop": "imageinfo", "iiprop": "url|extmetadata", "format": "json"})
-        for pg in json.loads(fetch(API + "?" + p)).get("query", {}).get("pages", {}).values():
-            t = pg["title"]
-            if t in seen or "imageinfo" not in pg: continue
-            seen.add(t); ii = pg["imageinfo"][0]; m = ii["extmetadata"]; lic = clean(m.get("LicenseShortName", {}).get("value"))
-            print("  gefunden:", t, "|", lic)
-            low = t.lower()
-            if not lic.lower().startswith(FREE) or not re.search(r"chord|akkord|acorde|accord", low): continue
-            if not re.search(r"\be\b|\bem\b|e[ -_]?(minor|major|moll|dur)|mi[ _](menor|mayor|mineur|majeur)", low.replace("file:", " ")): continue
-            cands.append({"title": t, "license": lic, "artist": clean(m.get("Artist", {}).get("value")), "url": ii["url"], "page": ii.get("descriptionurl"),
-                          "desc": clean(m.get("ImageDescription", {}).get("value"))[:200]})
-        time.sleep(1)
-    print(len(cands), "Kandidaten")
+    q = urllib.parse.urlencode({"action": "query", "titles": "|".join(TITLES), "prop": "imageinfo", "iiprop": "url|extmetadata", "format": "json"})
     out = []
-    for n, c in enumerate(cands[:16], 1):
-        time.sleep(4)
-        try:
-            raw = f"/tmp/c{n}"; open(raw, "wb").write(fetch(c["url"]))
-            dst = f"sfx/chord-{n}.mp3"
-            subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", raw, "-ac", "1", "-ar", "44100", "-b:a", "96k", dst], check=True)
-            c["file"] = dst; out.append(c); print(n, c["title"], c["license"])
-        except Exception as e:
-            print("Fehler", c["title"], e)
+    for n, p in enumerate(json.loads(fetch(API + "?" + q))["query"]["pages"].values(), 1):
+        if "imageinfo" not in p: print("fehlt", p.get("title")); continue
+        ii = p["imageinfo"][0]; m = ii["extmetadata"]; time.sleep(4)
+        raw = f"/tmp/c{n}"; open(raw, "wb").write(fetch(ii["url"]))
+        dst = f"sfx/chord-{n}.mp3"
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", raw, "-ac", "1", "-ar", "44100", "-b:a", "96k", dst], check=True)
+        out.append({"file": dst, "title": p["title"], "license": clean(m.get("LicenseShortName", {}).get("value")), "artist": clean(m.get("Artist", {}).get("value")),
+                    "page": ii.get("descriptionurl"), "desc": clean(m.get("ImageDescription", {}).get("value"))[:300]})
+        print(out[-1])
     json.dump(out, open("sfx/chords.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 
 if __name__ == "__main__":
