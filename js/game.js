@@ -25,9 +25,12 @@ const fmtDist = (m) => (m >= 1000 ? (m / 1000).toFixed(1).replace('.', ',') + ' 
 const fmtClock = (t) => { t = Math.max(0, Math.ceil(t)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
 
 const GRAV = 32;           // Schwerkraft beim Sprung
-const KITE_HIT = 4.6;      // Abstand, ab dem sich zwei Kites verheddern
-const KITE_DIST = 8;       // waagrechter Abstand Kite – Fahrer
-const KITE_H = 13;         // Flughöhe des Kites
+const KITE_HIT = 4.2;      // Abstand, ab dem sich zwei Kites verheddern
+const KITE_LINE = 16;      // Leinenlänge Hand – Kite
+const KITE_H = 13;         // Startwert der Flughöhe
+const KITE_SIDE_MAX = 75 * Math.PI / 180;   // Kite höchstens 75° neben der Fahrtrichtung – nie dahinter
+const KITE_ELEV_EDGE = 27 * Math.PI / 180;  // Höhenwinkel beim Ankanten: tief (max. 30°)
+const KITE_ELEV_FREE = 55 * Math.PI / 180;  // Höhenwinkel ohne Kante: hoch (bis 60°)
 const EDGE_BOOST = 1.3;    // Tempo-Multiplikator beim Ankanten
 const POWER_REGEN = 7;     // Kraft pro Sekunde ohne Ankanten
 const JUMP_COST = 10;
@@ -722,7 +725,7 @@ class Rider {
       boost: 0, slow: 0, inv: 0, shieldT: 0, crash: null, finished: false, finishTime: 0,
       item: null, itemCount: 0, roll: 0, rollItem: null,
       trickT: 0, tricks: 0, trickType: 0, trickSpin: 0, steerVis: 0, speedMul: 1,
-      kx: 0, ky: KITE_H, kz: 0, sway: Math.random() * TAU, wrongWay: 0,
+      kx: 0, ky: KITE_H, kz: 0, kElev: KITE_ELEV_FREE, kdx: 0, kdz: 1, sway: Math.random() * TAU, wrongWay: 0,
       draft: 0, gustCd: 0, rampCd: 0, rockCd: 0, gateIdx: 0, sc: null, scOpen: false, spin: 0, spins: 0,
     });
   }
@@ -1373,6 +1376,7 @@ function collisions() {
       }
       // Kites berühren sich => beide stürzen
       if (a.crash || b.crash || a.finished || b.finished) continue;
+      if (raceTime < 4) continue;                 // Schonzeit direkt nach dem Start
       if (Math.abs(a.ky - b.ky) > 5) continue;
       const kd = Math.hypot(a.kx - b.kx, a.kz - b.kz);
       if (kd < KITE_HIT && a.inv <= 0 && b.inv <= 0) {
@@ -1504,18 +1508,28 @@ function updateRiderVisual(r, dt, li) {
   // Kite: fliegt auf der Lee-Seite (mit dem Wind) und zieht leicht in Fahrtrichtung
   const fx = r.fx, fz = r.fz, rx = -fz, rz = fx;
   const hy = r.y + 1.6 + wave * 0.8;
-  let dx = wind.x * 0.85 + fx * 0.55 + rx * r.steerVis * 0.25, dz = wind.z * 0.85 + fz * 0.55 + rz * r.steerVis * 0.25;
-  const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
-  // Böen lassen den Kite quer zum Wind pendeln
-  const sway = Math.sin(r.sway * 0.9) * 1.4 * wind.gust;
-  let kx = r.x + dx * KITE_DIST - wind.z * sway, kz = r.z + dz * KITE_DIST + wind.x * sway;
-  let ky = KITE_H + r.y * 0.85 + Math.sin(r.sway * 1.3) * 0.5 - (wind.gust - 1) * 3;
+  // Richtung: mit dem Wind, aber höchstens 75° neben der Fahrtrichtung (nie hinter dem Fahrer)
+  // Der Winkel wird geglättet (nicht die Position), damit der Kite auch bei hohem Tempo exakt sitzt
+  const want = Math.atan2(wind.x * 0.85 + fx * 0.55 + rx * r.steerVis * 0.25, wind.z * 0.85 + fz * 0.55 + rz * r.steerVis * 0.25);
+  r.kRel = lerp(r.kRel || 0, clamp(wrapAngle(want - r.h), -KITE_SIDE_MAX, KITE_SIDE_MAX), damp(4, dt));
+  const swayA = Math.sin(r.sway * 0.9) * 0.08 * wind.gust;     // Böen lassen den Kite pendeln
+  const dir = r.h + clamp(r.kRel + swayA, -KITE_SIDE_MAX, KITE_SIDE_MAX);
+  const dx = Math.sin(dir), dz = Math.cos(dir);
+  r.kdx = dx; r.kdz = dz;
+  // Höhenwinkel: beim Ankanten tief (24–30°), sonst hoch (51–59°), in der Luft ganz oben
+  const elevWant = r.airborne ? 60 * Math.PI / 180
+    : r.edging ? KITE_ELEV_EDGE + Math.sin(r.sway * 1.3) * 0.05
+    : KITE_ELEV_FREE + Math.sin(r.sway * 1.3) * 0.07;
+  r.kElev = lerp(r.kElev, elevWant, damp(3, dt));
+  const hd = KITE_LINE * Math.cos(r.kElev);
+  let kx = r.x + dx * hd, kz = r.z + dz * hd;
+  let ky = hy + KITE_LINE * Math.sin(r.kElev);
   if (r.crash && r.crash.type === 'tangle') {
     const f = clamp(r.crash.t / 0.9, 0, 1);
     ky = lerp(ky, 0.6, f * f);
     kx += wind.x * 6 * f; kz += wind.z * 6 * f;   // abgestürzter Kite treibt mit dem Wind ab
   }
-  r.kx = lerp(r.kx || kx, kx, damp(10, dt)); r.kz = lerp(r.kz || kz, kz, damp(10, dt)); r.ky = lerp(r.ky, ky, damp(10, dt));
+  r.kx = kx; r.kz = kz; r.ky = ky;
   m.kite.position.set(r.kx, r.ky, r.kz);
   // Ausrichtung: Leinen stehen senkrecht zum Schirm, Vorderkante zeigt gegen den Wind
   kUp.set(r.kx - r.x, r.ky - hy, r.kz - r.z).normalize();
@@ -1537,15 +1551,28 @@ function updateRiderVisual(r, dt, li) {
     arr[o + 3] = r.x + fx * 1 - rx * side * 0.6; arr[o + 4] = hy; arr[o + 5] = r.z + fz * 1 - rz * side * 0.6;
   }
 
+  // Ankanten: gleichmäßiger Gischt-Vorhang entlang des Bretts in Richtung des Kites
+  if (r.edging && !r.airborne && !r.crash && r.speed > 6) {
+    const perSec = r.isPlayer ? 70 : 22;
+    r.edgeAcc = (r.edgeAcc || 0) + perSec * dt;
+    while (r.edgeAcc > 1) {
+      r.edgeAcc--;
+      r.edgeSlot = ((r.edgeSlot || 0) + 1) % 7;          // Positionen der Reihe nach entlang der Kante
+      const along = (r.edgeSlot / 6 - 0.5) * 2.6;
+      const sp = 7 + r.speed * 0.12;
+      emitSpray(r.x + fx * along + r.kdx * 0.6, 0.25 + wave, r.z + fz * along + r.kdz * 0.6,
+        r.kdx * sp + fx * r.speed * 0.15, 4.5, r.kdz * sp + fz * r.speed * 0.15, 0.45, 0.2);
+    }
+  }
   // Gischt hinter dem Brett
   if (!r.airborne && r.speed > 6 && !r.crash) {
-    const rate = r.speed * 0.22 * (r.edging ? 2.2 : 1) * (r.boost > 0 ? 1.6 : 1) * (r.isPlayer ? 1 : 0.6);
+    const rate = r.speed * 0.22 * (r.boost > 0 ? 1.6 : 1) * (r.isPlayer ? 1 : 0.6);
     r.sprayAcc = (r.sprayAcc || 0) + rate * dt;
     while (r.sprayAcc > 1) {
       r.sprayAcc--;
       const side = Math.random() < 0.5 ? -1 : 1;
       emitSpray(r.x - fx * 1.8 + rx * side * 0.5, 0.2 + wave, r.z - fz * 1.8 + rz * side * 0.5,
-        -fx * r.speed * 0.08 + rx * side * (2 + Math.random() * 3), 3 + Math.random() * 4 + (r.edging ? 3 : 0), -fz * r.speed * 0.08 + rz * side * (2 + Math.random() * 3),
+        -fx * r.speed * 0.08 + rx * side * (2 + Math.random() * 3), 3 + Math.random() * 4, -fz * r.speed * 0.08 + rz * side * (2 + Math.random() * 3),
         0.45 + Math.random() * 0.3, 0.25 + Math.random() * 0.25);
     }
   }
