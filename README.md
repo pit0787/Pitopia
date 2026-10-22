@@ -4,7 +4,11 @@ Ein Kitesurf-Rennspiel im Stil von Mario Kart – auf dem offenen Meer, für Han
 
 ## Spielen
 
-**Direkt online spielen:** https://claude.ai/artifact/8GhpE7JXUCKtoArx7p7puc
+**Auf dem Handy spielen (mit Neigungssteuerung):** https://pit0787.github.io/Pitopia/
+
+**Als Claude-Artefakt (ohne Neigungssteuerung):** https://claude.ai/artifact/8GhpE7JXUCKtoArx7p7puc
+
+Die GitHub-Pages-Seite wird aus dem Branch `gh-pages` ausgeliefert (Inhalt = dieser Ordner).
 
 Das Spiel ist eine reine Web-App (HTML + JavaScript + three.js, keine Installation nötig).
 Es muss über einen Webserver geöffnet werden, z. B.:
