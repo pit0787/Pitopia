@@ -4,6 +4,8 @@ Ein Kitesurf-Rennspiel im Stil von Mario Kart – auf dem offenen Meer, für Han
 
 ## Spielen
 
+**Direkt online spielen:** https://claude.ai/artifact/8GhpE7JXUCKtoArx7p7puc
+
 Das Spiel ist eine reine Web-App (HTML + JavaScript + three.js, keine Installation nötig).
 Es muss über einen Webserver geöffnet werden, z. B.:
 
