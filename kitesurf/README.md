@@ -25,7 +25,7 @@ Am besten das Handy **quer** halten.
 | Linke Bildschirmhälfte ziehen | ← / → | Lenken |
 | **Sprung** (rechts) | Leertaste | Springen (10 Kraft). In der Luft nochmal = Trick |
 | **Kante** (rechts, halten) | Shift / ↑ | Brett ankanten: schneller, kostet Kraft |
-| Item-Kreis oben rechts | E | Item benutzen |
+| Item-Knopf über „Sprung“ | E | Item benutzen |
 | Pause-Knopf | P / Esc | Pause |
 
 ## Regeln

@@ -100,7 +100,9 @@ h2 { margin: 0 0 12px; font-size: clamp(22px, 5vw, 32px); text-align: center; co
 
 #hud-right { position: absolute; right: max(10px, env(safe-area-inset-right)); top: max(8px, env(safe-area-inset-top)); display: flex; gap: 10px; align-items: flex-start; }
 #pause-btn { pointer-events: auto; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255,255,255,.85); color: #1b5f86; font-weight: 900; font-size: 16px; box-shadow: 0 3px 0 rgba(0,0,0,.2); }
+/* Item-Knopf sitzt rechts unten direkt über dem Sprung-Knopf */
 #item-btn {
+  position: fixed; right: max(32px, calc(env(safe-area-inset-right) + 10px)); bottom: max(140px, calc(env(safe-area-inset-bottom) + 118px));
   pointer-events: auto; width: 84px; height: 84px; border-radius: 50%; border: 4px solid #fff;
   background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.7), rgba(255,255,255,.25) 60%, rgba(43,181,216,.4));
   box-shadow: 0 4px 0 rgba(0,0,0,.2); display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff;
@@ -133,7 +135,7 @@ h2 { margin: 0 0 12px; font-size: clamp(22px, 5vw, 32px); text-align: center; co
   text-shadow: 0 2px 0 rgba(0,0,0,.25); box-shadow: 0 6px 0 rgba(0,0,0,.22);
 }
 .big-btn span { font-size: 34px; line-height: 1; }
-#btn-jump { right: max(22px, env(safe-area-inset-right)); bottom: max(120px, calc(env(safe-area-inset-bottom) + 110px)); background: radial-gradient(circle at 35% 30%, #8ff0a0, #3fbf5a); }
+#btn-jump { right: max(22px, env(safe-area-inset-right)); bottom: max(22px, env(safe-area-inset-bottom)); background: radial-gradient(circle at 35% 30%, #8ff0a0, #3fbf5a); }
 #btn-edge { right: max(140px, calc(env(safe-area-inset-right) + 130px)); bottom: max(22px, env(safe-area-inset-bottom)); background: radial-gradient(circle at 35% 30%, #ffb27a, #f0682d); }
 .big-btn.down { transform: translateY(4px) scale(.95); box-shadow: 0 2px 0 rgba(0,0,0,.22); filter: brightness(1.1); }
 .big-btn.disabled { filter: grayscale(.8) brightness(.9); }
@@ -146,6 +148,7 @@ h2 { margin: 0 0 12px; font-size: clamp(22px, 5vw, 32px); text-align: center; co
   #track-grid { grid-template-columns: 1fr; }
   .big-btn { width: 88px; height: 88px; }
   #btn-edge { right: max(118px, calc(env(safe-area-inset-right) + 108px)); }
+  #item-btn { right: max(24px, calc(env(safe-area-inset-right) + 2px)); bottom: max(122px, calc(env(safe-area-inset-bottom) + 100px)); }
 }
 @media (max-height: 500px) {
   .panel { padding: 10px 14px; border-radius: 22px; }
@@ -159,9 +162,8 @@ h2 { margin: 0 0 12px; font-size: clamp(22px, 5vw, 32px); text-align: center; co
   .menu-btn { padding: 9px 22px; font-size: 17px; }
   #pos-box { font-size: 36px; }
   #minimap { width: 84px; height: 84px; }
-  #item-btn { width: 70px; height: 70px; }
+  #item-btn { width: 70px; height: 70px; right: max(33px, calc(env(safe-area-inset-right) + 11px)); bottom: max(124px, calc(env(safe-area-inset-bottom) + 102px)); }
   #item-icon { font-size: 30px; height: 34px; }
   .big-btn { width: 92px; height: 92px; }
-  #btn-jump { bottom: max(100px, calc(env(safe-area-inset-bottom) + 96px)); }
   #btn-edge { right: max(124px, calc(env(safe-area-inset-right) + 116px)); }
 }
