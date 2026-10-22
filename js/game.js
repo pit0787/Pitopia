@@ -1886,14 +1886,41 @@ function buildTrackGrid() {
   });
 }
 
+// Vollbild, sobald das Handy quer gehalten wird. Browser erlauben das nur nach einer Berührung:
+// Klappt es beim Drehen nicht direkt, passiert es beim nächsten Antippen.
+const isLandscape = () => window.innerWidth > window.innerHeight;
+const canFullscreen = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) || navigator.standalone;
+let fsPending = false, fsHintShown = false;
+function inFullscreen() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function onOrientation() {
+  if (!isTouch || isStandalone || !isLandscape() || inFullscreen()) { fsPending = false; return; }
+  if (!canFullscreen) {                        // iPhone: kein Vollbild im Browser möglich
+    if (!fsHintShown) {
+      fsHintShown = true;
+      const h = $('fs-hint');
+      h.textContent = 'Für Vollbild: Teilen → „Zum Home-Bildschirm“ und Kite Kart von dort starten';
+      h.classList.remove('hidden');
+      setTimeout(() => h.classList.add('hidden'), 6000);
+    }
+    return;
+  }
+  fsPending = true;
+  goFullscreen();
+}
+window.addEventListener('orientationchange', () => setTimeout(onOrientation, 250));
+window.addEventListener('resize', onOrientation);
+document.addEventListener('pointerdown', () => { if (fsPending && isLandscape()) goFullscreen(); }, true);
+document.addEventListener('fullscreenchange', () => { if (inFullscreen()) fsPending = false; });
+
 function goFullscreen() {
   if (!isTouch) return;
   const el = document.documentElement;
   try {
     const req = el.requestFullscreen || el.webkitRequestFullscreen;
-    if (req && !document.fullscreenElement) {
+    if (req && !inFullscreen()) {
       const p = req.call(el);
-      if (p && p.then) p.then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => {})).catch(() => {});
+      if (p && p.then) p.then(() => { fsPending = false; if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); }).catch(() => {});
     }
   } catch (e) { /* nicht unterstützt */ }
 }
@@ -1993,5 +2020,6 @@ window.KiteKart = {
 try { if (isTouch && localStorage.getItem('kk_tilt') === '1' && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') enableTilt(); } catch (e) { /* egal */ }
 startMenuDemo();
 show('menu-title');
+onOrientation();
 requestAnimationFrame(frame);
 })();
