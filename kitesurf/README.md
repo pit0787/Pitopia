@@ -27,6 +27,16 @@ Am besten das Handy **quer** halten.
 | **Kante** (rechts, halten) | Shift / ↑ | Brett ankanten: schneller, kostet Kraft |
 | Item-Knopf über „Sprung“ | E | Item benutzen |
 | Pause-Knopf | P / Esc | Pause |
+| Handy neigen (Neigungssteuerung im Startmenü einschalten) | – | Lenken wie mit einem Lenkrad |
+| Im Sprung lenken/neigen | ← / → | Um die eigene Achse drehen (volle Drehung = Trick) |
+
+## Neigungssteuerung
+
+Im Startmenü „Neigungssteuerung“ einschalten (iPhone fragt nach Erlaubnis). Das Handy dann wie ein
+Lenkrad nach links oder rechts drehen. Die Haltung während des Countdowns gilt als geradeaus; im
+Pause-Menü kann neu kalibriert werden. Kleine Bewegungen bis 7° werden ignoriert, voller Einschlag
+erst bei etwa 32°. Hinweis: In der eingebetteten Claude-Artefakt-Ansicht liefert der Browser keine
+Sensordaten – dafür das Spiel direkt im Handy-Browser öffnen (z. B. über GitHub Pages).
 
 ## Regeln
 

@@ -723,7 +723,7 @@ class Rider {
       item: null, itemCount: 0, roll: 0, rollItem: null,
       trickT: 0, tricks: 0, trickType: 0, trickSpin: 0, steerVis: 0, speedMul: 1,
       kx: 0, ky: KITE_H, kz: 0, sway: Math.random() * TAU, wrongWay: 0,
-      draft: 0, gustCd: 0, rampCd: 0, rockCd: 0, gateIdx: 0, sc: null, scOpen: false,
+      draft: 0, gustCd: 0, rampCd: 0, rockCd: 0, gateIdx: 0, sc: null, scOpen: false, spin: 0, spins: 0,
     });
   }
   get airborne() { return this.y > 0.001 || this.vy > 0; }
@@ -824,8 +824,65 @@ holdButton($('btn-edge'), () => { input.edgeTouch = true; }, () => { input.edgeT
 $('item-btn').addEventListener('pointerdown', (e) => { e.preventDefault(); if (state === 'race') input.item = true; });
 $('pause-btn').addEventListener('click', () => togglePause());
 
+// Neigungssteuerung: Handy wie ein Lenkrad drehen. Die Schwerkraft wird in Bildschirm-
+// Koordinaten umgerechnet; der Winkel beim Rennstart gilt als Geradeaus (Kalibrierung).
+const TILT_DEAD = 7 * Math.PI / 180;     // tote Zone, damit kleines Wackeln nicht lenkt
+const TILT_MAX = 32 * Math.PI / 180;     // ab diesem Winkel voller Einschlag
+const tilt = { on: false, angle: null, zero: 0, steer: 0, lastEvent: 0 };
+function onMotion(e) {
+  const g = e.accelerationIncludingGravity;
+  if (!g || g.x === null) return;
+  const o = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+  let sx = g.x, sy = g.y;                                   // Hochformat
+  if (o === 90) { sx = -g.y; sy = g.x; }
+  else if (o === -90 || o === 270) { sx = g.y; sy = -g.x; }
+  else if (o === 180) { sx = -g.x; sy = -g.y; }
+  const a = Math.atan2(sx, sy);
+  tilt.angle = tilt.angle === null ? a : tilt.angle + wrapAngle(a - tilt.angle) * 0.35;   // glätten
+  tilt.lastEvent = performance.now();
+  const d = wrapAngle(tilt.angle - tilt.zero), m = Math.abs(d);
+  tilt.steer = m < TILT_DEAD ? 0 : -Math.sign(d) * clamp((m - TILT_DEAD) / (TILT_MAX - TILT_DEAD), 0, 1);
+}
+function calibrateTilt() { if (tilt.angle !== null) { tilt.zero = tilt.angle; tilt.steer = 0; } }
+function updateTiltButton() {
+  const b = $('btn-tilt');
+  b.textContent = 'Neigungssteuerung: ' + (tilt.on ? 'An' : 'Aus');
+  b.classList.toggle('primary', tilt.on);
+  $('btn-calibrate').classList.toggle('hidden', !tilt.on);
+  $('steer-hint').textContent = tilt.on ? '📱 Handy neigen = lenken' : '◀ Lenken ▶';
+}
+async function enableTilt() {
+  try {
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+      if (await DeviceMotionEvent.requestPermission() !== 'granted') throw new Error('denied');
+    }
+  } catch (e) { tiltNote('Kein Zugriff auf den Bewegungssensor erlaubt.'); return; }
+  window.addEventListener('devicemotion', onMotion);
+  tilt.on = true; tilt.angle = null;
+  updateTiltButton();
+  try { localStorage.setItem('kk_tilt', '1'); } catch (e) { /* egal */ }
+  // Kommen keine Sensordaten an (z. B. eingebettete Ansicht), wieder ausschalten
+  setTimeout(() => {
+    if (tilt.on && performance.now() - tilt.lastEvent > 1400) {
+      disableTilt();
+      tiltNote('Hier kommen keine Sensordaten an. Öffne das Spiel direkt im Handy-Browser.');
+    }
+  }, 1500);
+}
+function disableTilt() {
+  window.removeEventListener('devicemotion', onMotion);
+  tilt.on = false; tilt.steer = 0;
+  updateTiltButton();
+  try { localStorage.removeItem('kk_tilt'); } catch (e) { /* egal */ }
+}
+function tiltNote(text) { const n = $('tilt-note'); n.textContent = text; n.classList.remove('hidden'); }
+$('btn-tilt').addEventListener('click', () => { $('tilt-note').classList.add('hidden'); tilt.on ? disableTilt() : enableTilt(); });
+$('btn-calibrate').addEventListener('click', () => { calibrateTilt(); showMsg('Kalibriert', 0.8, 'So gehaltene Lage = geradeaus'); });
+if (!isTouch) $('btn-tilt').classList.add('hidden');
+updateTiltButton();
+
 function playerControl() {
-  const steer = clamp((input.right ? 1 : 0) - (input.left ? 1 : 0) + input.touchSteer, -1, 1);
+  const steer = clamp((input.right ? 1 : 0) - (input.left ? 1 : 0) + input.touchSteer + (tilt.on ? tilt.steer : 0), -1, 1);
   const c = { steer, edge: input.edgeKey || input.edgeTouch, jump: input.jump, item: input.item };
   input.jump = false; input.item = false;
   return c;
@@ -898,7 +955,7 @@ function aiControl(r, dt) {
   }
   const diff = wrapAngle(Math.atan2(tx - r.x, tz - r.z) - r.h);
   const wobble = Math.sin(worldTime * 0.7 + ai.noise) * 0.08;
-  const steer = clamp(-diff * 2.8 + wobble, -1, 1);
+  const steer = r.airborne ? 0 : clamp(-diff * 2.8 + wobble, -1, 1);   // in der Luft nicht ungewollt drehen
 
   // Ankanten mit Hysterese
   const curvy = path.curv[ti] > 0.7;
@@ -1029,7 +1086,7 @@ function crash(r, type, by) {
   if (type === 'tangle' && r.inv > 0) return false;
   const base = { tangle: 2.6, hit: 1.6, splash: 1.3, slip: 0.9 }[type];
   r.crash = { type, t: 0, dur: base * r.stunMul };
-  r.trickT = 0; r.edging = false;
+  r.trickT = 0; r.edging = false; r.spin = 0;
   burst(r.x, 0.5, r.z, 22, 8);
   if (r.isPlayer) {
     const msgs = {
@@ -1061,7 +1118,16 @@ function respawn(r) {
 
 function land(r) {
   burst(r.x, 0.3, r.z, 14, 5);
-  if (r.trickT > 0) { crash(r, 'splash'); return; }
+  if (r.trickT > 0) { r.spin = 0; crash(r, 'splash'); return; }
+  // Drehung: schief gelandet (mehr als ~60° quer) = Sturz, sonst zählt jede volle Drehung als Trick
+  const off = Math.abs(wrapAngle(r.spin));
+  if (off > 1.05) {
+    r.spin = 0;
+    if (crash(r, 'splash') && r.isPlayer) showMsg('Schief gelandet!', 1.6, 'Drehung vor der Landung beenden');
+    return;
+  }
+  r.tricks += Math.round(Math.abs(r.spin) / TAU);
+  r.spin = 0; r.spins = 0;
   if (r.tricks > 0) {
     r.boost = Math.min(3, r.boost + r.tricks * r.trickBoost);
     r.power = Math.min(100, r.power + r.tricks * 5);
@@ -1070,6 +1136,7 @@ function land(r) {
   r.tricks = 0;
 }
 
+const SPIN_RATE = TAU / 0.9;     // eine volle Drehung in ~0,9 s bei vollem Einschlag
 const TRICK_NAMES = ['Kiteloop', 'Backroll', 'Frontroll', 'Railey', 'Handlepass', 'Megaloop'];
 
 function physics(r, c, dt) {
@@ -1110,7 +1177,7 @@ function physics(r, c, dt) {
   if (c.jump) {
     if (!air) {
       if (r.power >= JUMP_COST) {
-        r.power -= JUMP_COST; r.vy = r.jumpV * (edging ? 1.08 : 1); r.y = 0.01; r.tricks = 0;
+        r.power -= JUMP_COST; r.vy = r.jumpV * (edging ? 1.08 : 1); r.y = 0.01; r.tricks = 0; r.spin = 0; r.spins = 0;
         burst(r.x, 0.3, r.z, 10, 6);
         if (r.isPlayer) beep(440, 0.15, 'triangle', 0.08, 300);
       } else if (r.isPlayer) showMsg('Zu wenig Kraft', 0.8);
@@ -1120,9 +1187,18 @@ function physics(r, c, dt) {
     }
   }
 
-  // Lenken
-  const turn = r.turnRate * (air ? 0.55 : 1) * (edging ? 1.1 : 1) * clamp(r.speed / 8, 0.3, 1) * (r.slow > 0 ? 0.8 : 1);
+  // Lenken – in der Luft dreht man sich stattdessen um die eigene Achse
+  const turn = r.turnRate * (air ? 0.25 : 1) * (edging ? 1.1 : 1) * clamp(r.speed / 8, 0.3, 1) * (r.slow > 0 ? 0.8 : 1);
   r.h = wrapAngle(r.h - c.steer * turn * dt);
+  if (air) {
+    const s = Math.abs(c.steer) < 0.3 ? 0 : Math.sign(c.steer) * (Math.abs(c.steer) - 0.3) / 0.7;
+    r.spin -= s * SPIN_RATE * (0.8 + r.def.stats.trick * 0.08) * dt;
+    const turns = Math.floor(Math.abs(r.spin) / TAU + 0.15);   // zählt kurz vor Vollendung
+    if (turns > r.spins) {
+      r.spins = turns;
+      if (r.isPlayer) { showMsg(turns * 360 + '°!', 0.7); beep(600 + turns * 150, 0.1, 'triangle'); }
+    }
+  }
   r.steerVis = lerp(r.steerVis, c.steer, damp(8, dt));
 
   // Tempo
@@ -1219,7 +1295,7 @@ function trackFeatures(r, dt) {
       if (Math.abs(f.idx - r.idx) > 10) continue;
       const dx = r.x - f.x, dz = r.z - f.z;
       if (Math.abs(dx * f.tx + dz * f.tz) < f.len / 2 && Math.abs(-dx * f.tz + dz * f.tx) < f.wide / 2) {
-        r.vy = r.jumpV * 1.3; r.y = 0.01; r.tricks = 0; r.rampCd = 1;
+        r.vy = r.jumpV * 1.3; r.y = 0.01; r.tricks = 0; r.spin = 0; r.spins = 0; r.rampCd = 1;
         burst(r.x, 0.5, r.z, 16, 8);
         if (r.isPlayer) { showMsg('Welle!', 0.8, 'Jetzt Tricks!'); beep(380, 0.25, 'triangle', 0.08, 400); }
         break;
@@ -1400,7 +1476,7 @@ function updateRiderVisual(r, dt, li) {
   const m = r.mesh;
   const wave = waveH(r.x, r.z, worldTime);
   m.root.position.set(r.x, r.y + wave * 0.8, r.z);
-  m.root.rotation.y = r.h;
+  m.root.rotation.y = r.h + r.spin;
   m.root.visible = !(r.inv > 0 && Math.floor(r.inv * 10) % 2 === 0);
 
   const tg = m.tg;
@@ -1686,6 +1762,7 @@ function frame(now) {
     const held = input.edgeKey || input.edgeTouch;
     if (held && startPress === null) startPress = countdown;
     if (!held) startPress = null;
+    if (countdown > 0.5) calibrateTilt();     // Haltung während des Countdowns = geradeaus
     if (countdown <= 0) { state = 'race'; startBoosts(held); }
     worldTime += dt;
     riders.forEach((r, i) => updateRiderVisual(r, dt, i));
@@ -1809,6 +1886,7 @@ function startRace() {
   setRaceUI(true);
   state = 'countdown';
   countdown = round ? 5 : 3.2;
+  calibrateTilt();
   hud.round.textContent = round ? `🏆 ${round.name} · ${riders.length} Fahrer` : '';
   if (round) showMsg(round.name, 1.8, round.out ? `Die letzten ${round.out} scheiden aus` : 'Der Sieger holt den Cup!');
   input.touchSteer = 0; input.edgeTouch = false;
@@ -1870,7 +1948,7 @@ $('btn-help').addEventListener('click', () => show('menu-help'));
 $('btn-chars-next').addEventListener('click', () => { buildTrackGrid(); show('menu-tracks'); });
 $('btn-race').addEventListener('click', () => { goFullscreen(); cup = null; startRace(); });
 $('btn-cup').addEventListener('click', () => { goFullscreen(); startCup(); });
-$('btn-resume').addEventListener('click', () => togglePause());
+$('btn-resume').addEventListener('click', () => { calibrateTilt(); togglePause(); });
 $('btn-restart').addEventListener('click', () => startRace());
 $('btn-quit').addEventListener('click', () => { cup = null; startMenuDemo(); show('menu-title'); });
 $('btn-res-again').addEventListener('click', () => (resultAction === 'cup' ? startCup() : startRace()));
@@ -1883,8 +1961,9 @@ window.KiteKart = {
   fastForward(sec) { if (state === 'countdown') state = 'race'; for (let t = 0; t < sec && (state === 'race' || state === 'finished'); t += 1 / 30) simulate(1 / 30); },
   get raceTime() { return raceTime; },
   get state() { return state; }, get riders() { return riders; }, get player() { return player; }, get path() { return path; }, startRace, startCup,
-  get cup() { return cup; }, get features() { return { ramps, gates, rocks, gusts, shortcuts }; }, showResults, selectChar: (i) => { selChar = i; }, selectTrack: (i) => { selTrack = i; } };
+  get cup() { return cup; }, tilt, get features() { return { ramps, gates, rocks, gusts, shortcuts }; }, showResults, selectChar: (i) => { selChar = i; }, selectTrack: (i) => { selTrack = i; } };
 
+try { if (isTouch && localStorage.getItem('kk_tilt') === '1' && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') enableTilt(); } catch (e) { /* egal */ }
 startMenuDemo();
 show('menu-title');
 requestAnimationFrame(frame);

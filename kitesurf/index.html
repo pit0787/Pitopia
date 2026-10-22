@@ -56,6 +56,8 @@
     <p class="subtitle">Kitesurf-Rennen auf dem offenen Meer</p>
     <button class="menu-btn primary" id="btn-start">Los geht's!</button>
     <button class="menu-btn" id="btn-help">Steuerung</button>
+    <button class="menu-btn" id="btn-tilt">Neigungssteuerung: Aus</button>
+    <p id="tilt-note" class="tilt-note hidden"></p>
   </div>
 </div>
 
@@ -64,6 +66,8 @@
     <h2>Steuerung</h2>
     <div class="help-grid">
       <div><b>Linke Bildschirmhälfte</b><br>Finger ziehen = lenken</div>
+      <div><b>Neigungssteuerung</b><br>Im Startmenü einschalten: Handy wie ein Lenkrad nach links/rechts drehen. Die Haltung beim Countdown gilt als geradeaus.</div>
+      <div><b>Drehen in der Luft</b><br>Im Sprung nach links/rechts lenken (oder neigen) = Drehung. Jede volle Drehung zählt als Trick – aber gerade landen, sonst Sturz!</div>
       <div><b>Sprung</b><br>Springen (kostet 10 Kraft). In der Luft nochmal drücken = Trick! Trick vor der Landung fertig bekommen = Turbo.</div>
       <div><b>Kante</b><br>Gedrückt halten: Brett ankanten = schneller, verbraucht aber Kraft.</div>
       <div><b>Item</b><br>Den runden Knopf über „Sprung“ antippen, um dein Item einzusetzen.</div>
@@ -111,6 +115,7 @@
   <div class="panel">
     <h2>Pause</h2>
     <button class="menu-btn primary" id="btn-resume">Weiter</button>
+    <button class="menu-btn hidden" id="btn-calibrate">Neigung kalibrieren</button>
     <button class="menu-btn" id="btn-restart">Neustart</button>
     <button class="menu-btn" id="btn-quit">Hauptmenü</button>
   </div>
