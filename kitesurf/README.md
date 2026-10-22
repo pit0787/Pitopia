@@ -32,6 +32,14 @@ Am besten das Handy **quer** halten.
 | Handy neigen (Neigungssteuerung im Startmenü einschalten) | – | Lenken wie mit einem Lenkrad |
 | Im Sprung lenken/neigen | ← / → | Um die eigene Achse drehen (volle Drehung = Trick) |
 
+## Vollbild
+
+Sobald das Handy quer gehalten wird, wechselt das Spiel in den Vollbildmodus (Android/Chrome:
+direkt beim Drehen oder spätestens beim nächsten Antippen – Browser erlauben Vollbild nur nach
+einer Berührung). Auf dem iPhone gibt es im Browser kein Vollbild für Webseiten: Dort über
+Teilen → „Zum Home-Bildschirm“ hinzufügen und Kite Kart vom Home-Bildschirm starten – dann läuft
+es ohne Browserleisten.
+
 ## Neigungssteuerung
 
 Im Startmenü „Neigungssteuerung“ einschalten (iPhone fragt nach Erlaubnis). Das Handy dann wie ein
