@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2bb5d8">
+<title>Kite Kart</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<!-- ===== HUD ===== -->
+<div id="hud" class="hidden">
+  <div id="hud-left">
+    <div id="pos-box"><span id="pos-num">1</span><span id="pos-suffix">.</span><small id="pos-total">/8</small></div>
+    <div id="hc-box"></div>
+    <div id="lap-box">Ziel in <span id="lap-num">–</span></div>
+    <div id="round-box"></div>
+    <canvas id="minimap" width="140" height="140"></canvas>
+  </div>
+  <div id="hud-center">
+    <div id="timer">3:00</div>
+    <div id="power-wrap">
+      <div id="power-label">Kraft</div>
+      <div id="power-bar"><div id="power-fill"></div><span id="power-val">100</span></div>
+    </div>
+    <div id="wind-box"><span id="wind-arrow">➜</span><span>Wind</span></div>
+    <div id="draft-box"><span>Windschatten</span><div id="draft-bar"><div id="draft-fill"></div></div></div>
+  </div>
+  <div id="hud-right">
+    <button id="pause-btn" aria-label="Pause">II</button>
+    <button id="item-btn" aria-label="Item benutzen"><span id="item-icon"></span><small>Item</small></button>
+  </div>
+  <div id="message"></div>
+</div>
+
+<!-- ===== Touch controls ===== -->
+<div id="touch" class="hidden">
+  <div id="steer-zone">
+    <div id="stick-base"><div id="stick-knob"></div></div>
+    <div id="steer-hint">◀ Lenken ▶</div>
+  </div>
+  <div id="btn-zone">
+    <button id="btn-jump" class="big-btn"><span>⤒</span>Sprung</button>
+    <button id="btn-edge" class="big-btn"><span>⟋</span>Kante</button>
+  </div>
+</div>
+
+<!-- ===== Menus ===== -->
+<div id="menu-title" class="screen">
+  <div class="title-wrap">
+    <h1><span class="t1">Kite</span><span class="t2">Kart</span></h1>
+    <p class="subtitle">Kitesurf-Rennen auf dem offenen Meer</p>
+    <button class="menu-btn primary" id="btn-start">Los geht's!</button>
+    <button class="menu-btn" id="btn-help">Steuerung</button>
+    <button class="menu-btn" id="btn-tilt">Neigungssteuerung: Aus</button>
+    <p id="tilt-note" class="tilt-note hidden"></p>
+  </div>
+</div>
+
+<div id="menu-help" class="screen hidden">
+  <div class="panel">
+    <h2>Steuerung</h2>
+    <div class="help-grid">
+      <div><b>Linke Bildschirmhälfte</b><br>Finger ziehen = lenken</div>
+      <div><b>Neigungssteuerung</b><br>Im Startmenü einschalten: Handy wie ein Lenkrad nach links/rechts drehen. Die Haltung beim Countdown gilt als geradeaus.</div>
+      <div><b>Drehen in der Luft</b><br>Im Sprung nach links/rechts lenken (oder neigen) = Drehung. Jede volle Drehung zählt als Trick – aber gerade landen, sonst Sturz!</div>
+      <div><b>Sprung</b><br>Springen (kostet 10 Kraft). In der Luft nochmal drücken = Trick! Trick vor der Landung fertig bekommen = Turbo.</div>
+      <div><b>Kante</b><br>Gedrückt halten: Brett ankanten = schneller, verbraucht aber Kraft.</div>
+      <div><b>Item</b><br>Den runden Knopf über „Sprung“ antippen, um dein Item einzusetzen.</div>
+      <div><b>Kraft 0–100</b><br>Lädt sich langsam wieder auf, wenn du nicht ankantest – oder sofort mit dem Kokos-Drink.</div>
+      <div><b>Wind</b><br>Der Wind kommt aus einer Richtung (Pfeil oben). Halbwind ist am schnellsten, direkt gegen den Wind bist du langsam.</div>
+      <div><b>Achtung!</b><br>Berühren sich zwei Kites, verheddern sie sich: beide stürzen und starten vom letzten Checkpoint neu.</div>
+      <div><b>Start-Turbo</b><br>„Kante“ kurz vor „Los!“ drücken und halten (nach der 1). Zu früh = Fehlstart.</div>
+      <div><b>Windschatten</b><br>Fahr dicht hinter jemandem her: Die Leiste lädt sich, dann gibt's Turbo. Aber Abstand halten, sonst verheddern sich die Kites!</div>
+      <div><b>Wellen</b><br>Über eine Welle fahren = großer Gratis-Sprung. Perfekt für Tricks.</div>
+      <div><b>Bojen-Tore & Felsen</b><br>Durch die orangen Tore fahren gibt Turbo und Kraft. Felsen bremsen dich – drüberspringen geht.</div>
+      <div><b>Böen-Felder</b><br>Dunkle, gestreifte Flecken auf dem Wasser: Turbo und +12 Kraft. Der Wind dreht übrigens langsam.</div>
+      <div><b>Abkürzungen</b><br>In engen Kurven führt eine Rinne mit grünen Bojen quer hindurch. Offen nur ab Platz 4 – sonst ist es eine Sandbank.</div>
+      <div><b>Handicap</b><br>Wer hinten liegt, fährt schneller: +1,5 % Tempo für jeden Platz hinter dem Führenden (Platz 8 = +10,5 %).</div>
+      <div><b>K.-o.-Cup</b><br>Drei Rennen nacheinander. Nach Vorrunde und Halbfinale scheiden jeweils die letzten zwei aus.</div>
+    </div>
+    <p class="keys">Tastatur: ←/→ lenken · Leertaste Sprung · Shift/↑ Kante · E Item · P Pause</p>
+    <button class="menu-btn primary" data-back="menu-title">Zurück</button>
+  </div>
+</div>
+
+<div id="menu-chars" class="screen hidden">
+  <div class="panel wide">
+    <h2>Wähle deinen Kiter</h2>
+    <div id="char-grid"></div>
+    <div class="row">
+      <button class="menu-btn" data-back="menu-title">Zurück</button>
+      <button class="menu-btn primary" id="btn-chars-next">Weiter</button>
+    </div>
+  </div>
+</div>
+
+<div id="menu-tracks" class="screen hidden">
+  <div class="panel wide">
+    <h2>Wähle die Strecke</h2>
+    <div id="track-grid"></div>
+    <div class="row">
+      <button class="menu-btn" data-back="menu-chars">Zurück</button>
+      <button class="menu-btn" id="btn-cup">🏆 K.-o.-Cup</button>
+      <button class="menu-btn primary" id="btn-race">Rennen starten</button>
+    </div>
+  </div>
+</div>
+
+<div id="menu-pause" class="screen hidden dim">
+  <div class="panel">
+    <h2>Pause</h2>
+    <button class="menu-btn primary" id="btn-resume">Weiter</button>
+    <button class="menu-btn hidden" id="btn-calibrate">Neigung kalibrieren</button>
+    <button class="menu-btn" id="btn-restart">Neustart</button>
+    <button class="menu-btn" id="btn-quit">Hauptmenü</button>
+  </div>
+</div>
+
+<div id="menu-results" class="screen hidden dim">
+  <div class="panel">
+    <h2 id="result-title">Ziel!</h2>
+    <table id="result-table"></table>
+    <div class="row">
+      <button class="menu-btn" id="btn-res-menu">Hauptmenü</button>
+      <button class="menu-btn primary" id="btn-res-again">Nochmal</button>
+    </div>
+  </div>
+</div>
+
+<div id="rotate-hint">📱↻ Bitte das Handy quer halten</div>
+
+<script src="lib/three.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
