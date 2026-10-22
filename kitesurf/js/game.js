@@ -1506,7 +1506,7 @@ const hud = {
   pos: $('pos-num'), lap: $('lap-num'), timer: $('timer'),
   power: $('power-fill'), powerVal: $('power-val'), itemBtn: $('item-btn'), itemIcon: $('item-icon'),
   msg: $('message'), jump: $('btn-jump'), edge: $('btn-edge'), wind: $('wind-arrow'),
-  draft: $('draft-fill'), draftBox: $('draft-box'), round: $('round-box'),
+  draft: $('draft-fill'), draftBox: $('draft-box'), round: $('round-box'), hc: $('hc-box'),
 };
 let msgTimer = 0;
 function showMsg(text, dur = 1.5, small = '') {
@@ -1525,6 +1525,8 @@ function updateHud(dt) {
   if (msgTimer > 0) { msgTimer -= dt; if (msgTimer <= 0) hud.msg.classList.remove('show'); }
   if (!player) return;
   setHud('pos', hud.pos, String(player.rank));
+  const hc = Math.round(handicap(player) * 1000) / 10;
+  setHud('hc', hud.hc, hc > 0 ? `+${String(hc).replace('.', ',')} % Tempo` : '');
   setHud('lap', hud.lap, fmtDist(remaining(player)));
   const left = RACE_TIME_LIMIT - raceTime;
   setHud('timer', hud.timer, fmtClock(state === 'countdown' ? RACE_TIME_LIMIT : left));
@@ -1598,16 +1600,12 @@ function updateRanks() {
   return sorted;
 }
 
+// Handicap nach Platz: jeder Platz hinter dem Führenden fährt etwas schneller (gilt für alle)
+const HANDICAP_PER_PLACE = 0.015;
+const handicap = (r) => (r.finished ? 0 : (r.rank - 1) * HANDICAP_PER_PLACE);
 function rubberBand(r, dt) {
-  if (r.isPlayer && !r.finished) { r.speedMul = 1; return; }
-  // Sanfte Aufholhilfe: nur wenige Prozent, damit Können entscheidet
-  let want = 0.96;
-  if (player && !player.finished && !r.isPlayer) {
-    const gap = player.progress - r.progress;
-    if (gap > 40) want = 1.03;
-    else if (gap < -60) want = 0.93;
-  }
-  r.speedMul = lerp(r.speedMul, want, damp(0.5, dt));
+  const base = r.isPlayer ? 1 : 0.96;      // Grundtempo der Computer-Fahrer
+  r.speedMul = lerp(r.speedMul, base + handicap(r), damp(1.5, dt));
 }
 
 let lastLapMsg = -2, demoEnd = 0;

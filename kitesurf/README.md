@@ -57,7 +57,8 @@ Am besten das Handy **quer** halten.
   Offen nur ab Platz 4 – für die Führenden ist es eine bremsende Sandbank.
 - **Items nach Abstand:** Wer führt, bekommt Verteidigungs-Items, dicht dahinter einfache Items,
   wer weit (über 200 m) zurückliegt, die starken Aufhol-Items.
-- **Sanfte Aufholhilfe:** Computer-Fahrer werden höchstens ein paar Prozent schneller oder langsamer.
+- **Handicap nach Platz:** Wer hinten liegt, fährt schneller – +1,5 % Tempo für jeden Platz hinter dem
+  Führenden (Platz 2 = +1,5 %, Platz 8 = +10,5 %). Gilt für alle Fahrer, auch für dich; die Anzeige steht unter deinem Platz.
 - **K.-o.-Cup:** Drei Rennen auf allen drei Strecken. Nach Vorrunde (8 Fahrer) und Halbfinale (6)
   scheiden jeweils die letzten zwei aus, im Finale fahren die besten vier um den Cup.
 
