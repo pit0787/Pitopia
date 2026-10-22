@@ -38,6 +38,9 @@ Am besten das Handy **quer** halten.
   Sonst: Bauchklatscher.
 - **Zeitlimit:** Jedes Rennen dauert maximal 3:00 Minuten. Die Rundenzahl ist pro Strecke so gewählt,
   dass ein Rennen ca. 2:20–2:45 dauert.
+- **Wind:** Der Wind kommt pro Strecke aus einer festen Richtung (leicht zufällig gedreht, Pfeil oben im Bild).
+  Halbwind ist am schnellsten, direkt gegen den Wind bist du langsamer. Die Kites fliegen auf der Lee-Seite
+  und neigen sich mit dem Wind.
 
 ## Strecken
 

@@ -25,13 +25,21 @@ const fmtClock = (t) => { t = Math.max(0, Math.ceil(t)); return Math.floor(t / 6
 
 const GRAV = 32;           // Schwerkraft beim Sprung
 const KITE_HIT = 4.6;      // Abstand, ab dem sich zwei Kites verheddern
-const KITE_FWD = 7;        // Kite fliegt vor dem Fahrer
+const KITE_DIST = 8;       // waagrechter Abstand Kite – Fahrer
 const KITE_H = 13;         // Flughöhe des Kites
 const EDGE_BOOST = 1.3;    // Tempo-Multiplikator beim Ankanten
 const POWER_REGEN = 7;     // Kraft pro Sekunde ohne Ankanten
 const JUMP_COST = 10;
 const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
+// Wind: Einheitsvektor in die Richtung, in die er weht, plus Böen
+const wind = { x: 0, z: 1, gust: 1 };
+function setWind(deg) { const a = deg * Math.PI / 180; wind.x = Math.sin(a); wind.z = Math.cos(a); }
+// Tempo-Faktor je nach Kurs zum Wind: Halbwind am schnellsten, gegen den Wind langsam
+function windFactor(fx, fz) {
+  const up = -(fx * wind.x + fz * wind.z);          // 1 = direkt gegen den Wind
+  return 1 + 0.06 * (1 - up * up) - 0.17 * Math.max(0, up) ** 2;
+}
 const waveH = (x, z, t) => 0.35 * Math.sin(x * 0.08 + t * 1.3) + 0.25 * Math.sin(z * 0.11 - t * 1.1);
 
 // ===================================================================
@@ -214,6 +222,7 @@ function buildWorld(def) {
     if (waterMat) { waterMat.uniforms.uTrack.value.dispose(); waterMat.dispose(); }
   }
   path = computePath(def);
+  setWind(def.wind + (Math.random() * 2 - 1) * 20);
   world = new THREE.Group();
   scene.add(world);
   const rnd = mulberry32(hashStr(def.id));
@@ -966,6 +975,7 @@ function physics(r, c, dt) {
   if (r.boost > 0) maxS *= 1.45;
   if (r.slow > 0) maxS *= 0.55;
   if (r.offTrack && !air) maxS *= r.offFactor;
+  maxS *= windFactor(r.fx, r.fz);
   if (r.speed < maxS) r.speed = Math.min(maxS, r.speed + (r.boost > 0 ? 45 : r.accel * (edging ? 1.4 : 1)) * dt);
   else r.speed = Math.max(maxS, r.speed - (air ? 3 : 20) * dt);
   r.x += r.fx * r.speed * dt;
@@ -1111,7 +1121,7 @@ function updateSpray(dt) {
     if (sp.life[i] > 0) {
       sp.life[i] -= dt;
       sp.vy[i] -= 22 * dt;
-      sp.x[i] += sp.vx[i] * dt; sp.y[i] += sp.vy[i] * dt; sp.z[i] += sp.vz[i] * dt;
+      sp.x[i] += (sp.vx[i] + wind.x * 5) * dt; sp.y[i] += sp.vy[i] * dt; sp.z[i] += (sp.vz[i] + wind.z * 5) * dt;
       const s = sp.life[i] > 0 ? sp.size[i] * (0.4 + 0.6 * sp.life[i] / sp.max[i]) : 0;
       dummy.position.set(sp.x[i], Math.max(sp.y[i], -0.5), sp.z[i]);
       dummy.scale.setScalar(s);
@@ -1127,7 +1137,7 @@ function updateSpray(dt) {
 // ===================================================================
 // Darstellung der Fahrer
 // ===================================================================
-const tmpV = new THREE.Vector3();
+const tmpV = new THREE.Vector3(), kUp = new THREE.Vector3(), kFwd = new THREE.Vector3(), kSide = new THREE.Vector3(), kMat = new THREE.Matrix4();
 function updateRiderVisual(r, dt, li) {
   const m = r.mesh;
   const wave = waveH(r.x, r.z, worldTime);
@@ -1157,24 +1167,34 @@ function updateRiderVisual(r, dt, li) {
   m.shield.visible = r.shieldT > 0;
   if (m.shield.visible) m.shield.scale.setScalar(2.6 + Math.sin(worldTime * 6) * 0.1);
 
-  // Kite
+  // Kite: fliegt auf der Lee-Seite (mit dem Wind) und zieht leicht in Fahrtrichtung
   const fx = r.fx, fz = r.fz, rx = -fz, rz = fx;
-  const sway = Math.sin(r.sway * 0.9) * 1.6 + r.steerVis * 2.2;
-  let kx = r.x + fx * KITE_FWD + rx * sway, kz = r.z + fz * KITE_FWD + rz * sway, ky = KITE_H + r.y * 0.85 + Math.sin(r.sway * 1.3) * 0.5;
+  const hy = r.y + 1.6 + wave * 0.8;
+  let dx = wind.x * 0.85 + fx * 0.55 + rx * r.steerVis * 0.25, dz = wind.z * 0.85 + fz * 0.55 + rz * r.steerVis * 0.25;
+  const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
+  // Böen lassen den Kite quer zum Wind pendeln
+  const sway = Math.sin(r.sway * 0.9) * 1.4 * wind.gust;
+  let kx = r.x + dx * KITE_DIST - wind.z * sway, kz = r.z + dz * KITE_DIST + wind.x * sway;
+  let ky = KITE_H + r.y * 0.85 + Math.sin(r.sway * 1.3) * 0.5 - (wind.gust - 1) * 3;
   if (r.crash && r.crash.type === 'tangle') {
     const f = clamp(r.crash.t / 0.9, 0, 1);
     ky = lerp(ky, 0.6, f * f);
+    kx += wind.x * 6 * f; kz += wind.z * 6 * f;   // abgestürzter Kite treibt mit dem Wind ab
   }
-  r.kx = lerp(r.kx || kx, kx, damp(12, dt)); r.kz = lerp(r.kz || kz, kz, damp(12, dt)); r.ky = lerp(r.ky, ky, damp(10, dt));
+  r.kx = lerp(r.kx || kx, kx, damp(10, dt)); r.kz = lerp(r.kz || kz, kz, damp(10, dt)); r.ky = lerp(r.ky, ky, damp(10, dt));
   m.kite.position.set(r.kx, r.ky, r.kz);
-  m.kite.rotation.set(0.45, r.h, 0, 'YXZ');
-  m.kite.rotation.z = -r.steerVis * 0.45 - Math.sin(r.sway * 0.9) * 0.15;
+  // Ausrichtung: Leinen stehen senkrecht zum Schirm, Vorderkante zeigt gegen den Wind
+  kUp.set(r.kx - r.x, r.ky - hy, r.kz - r.z).normalize();
+  kFwd.set(-wind.x, 0, -wind.z).addScaledVector(kUp, wind.x * kUp.x + wind.z * kUp.z).normalize();
+  kSide.crossVectors(kUp, kFwd);
+  kMat.makeBasis(kSide, kUp, kFwd);
+  m.kite.quaternion.setFromRotationMatrix(kMat);
+  m.kite.rotateY(Math.sin(r.sway * 1.7) * 0.08 * wind.gust);
   m.kite.visible = m.root.visible || !!r.crash;
 
   // Leinen
   m.kite.updateMatrixWorld();
   const arr = kiteLines.geometry.attributes.position.array;
-  const hy = r.y + 1.6 + wave * 0.8;
   for (let s = 0; s < 2; s++) {
     const side = s ? 1 : -1;
     tmpV.set(side * 3.25, -2.1, 0); m.kite.localToWorld(tmpV);
@@ -1227,7 +1247,7 @@ function updateMenuCam(dt) {
 const hud = {
   pos: $('pos-num'), lap: $('lap-num'), lapTotal: $('lap-total'), timer: $('timer'),
   power: $('power-fill'), powerVal: $('power-val'), itemBtn: $('item-btn'), itemIcon: $('item-icon'),
-  msg: $('message'), jump: $('btn-jump'), edge: $('btn-edge'),
+  msg: $('message'), jump: $('btn-jump'), edge: $('btn-edge'), wind: $('wind-arrow'),
 };
 let msgTimer = 0;
 function showMsg(text, dur = 1.5, small = '') {
@@ -1250,6 +1270,10 @@ function updateHud(dt) {
   const left = RACE_TIME_LIMIT - raceTime;
   setHud('timer', hud.timer, fmtClock(state === 'countdown' ? RACE_TIME_LIMIT : left));
   hud.timer.classList.toggle('low', left < 30 && state === 'race');
+  // Windpfeil relativ zur Blickrichtung der Kamera (oben = geradeaus)
+  const cf = Math.sin(camH) * wind.x + Math.cos(camH) * wind.z;
+  const cr = -Math.cos(camH) * wind.x + Math.sin(camH) * wind.z;
+  setHud('wind', hud.wind.style, `rotate(${Math.round(Math.atan2(cr, cf) * 180 / Math.PI - 90)}deg)`, 'transform');
   const pw = Math.round(player.power);
   setHud('pw', hud.power.style, pw + '%', 'width');
   setHud('pwv', hud.powerVal, String(pw));
@@ -1323,6 +1347,7 @@ function rubberBand(r, dt) {
 let lastLapMsg = -2;
 function simulate(dt) {
   worldTime += dt;
+  wind.gust = 1 + 0.18 * Math.sin(worldTime * 0.37) + 0.1 * Math.sin(worldTime * 1.13 + 2);
   const racing = state === 'race' || state === 'finished' || state === 'menu';
   if (racing) {
     for (const r of riders) {

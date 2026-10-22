@@ -32,23 +32,24 @@ const STAT_LABELS = {
   speed: 'Schnelligkeit', agility: 'Wendigkeit', skill: 'Geschicklichkeit', jump: 'Sprunghöhe', trick: 'Trick-Level',
 };
 
+// wind: Richtung in Grad, in die der Wind weht (0 = +z, 90 = +x).
 // Streckenform als normierte Kontrollpunkte (x, z). Die Strecke wird beim Laden
 // auf die Ziellänge skaliert. Rundenzahl so gewählt, dass ein Rennen ~2:30 dauert;
 // das Zeitlimit beträgt immer 3:00.
 const TRACKS = [
   {
-    id: 'lagune', name: 'Sonnen-Lagune', difficulty: 'Kurz', length: 1050, laps: 5, width: 34,
+    id: 'lagune', name: 'Sonnen-Lagune', difficulty: 'Kurz', length: 1050, laps: 5, width: 34, wind: 210,
     sky: [0x6fd0f2, 0xd9f6ff], water: [0x1aa3c8, 0x7fe3ee], sand: 0xf5e1a4,
     points: [[0, -1], [0.75, -0.85], [1, -0.2], [0.8, 0.55], [0.25, 0.8], [-0.35, 0.95], [-0.9, 0.6], [-1, -0.1], [-0.6, -0.75]],
   },
   {
-    id: 'riff', name: 'Korallen-Riff', difficulty: 'Mittel', length: 1750, laps: 3, width: 32,
+    id: 'riff', name: 'Korallen-Riff', difficulty: 'Mittel', length: 1750, laps: 3, width: 32, wind: 120,
     sky: [0x78c8ff, 0xfff0d6], water: [0x0e8fbf, 0x5fe0d8], sand: 0xffd6a5,
     points: [[0, -1], [0.6, -0.95], [0.95, -0.55], [0.6, -0.15], [0.95, 0.3], [0.75, 0.85], [0.15, 0.7], [-0.2, 0.25], [-0.55, 0.85],
              [-0.95, 0.55], [-0.85, -0.05], [-0.45, -0.3], [-0.75, -0.75]],
   },
   {
-    id: 'kap', name: 'Sturm-Kap', difficulty: 'Lang', length: 2700, laps: 2, width: 30,
+    id: 'kap', name: 'Sturm-Kap', difficulty: 'Lang', length: 2700, laps: 2, width: 30, wind: 320,
     sky: [0x5a8fc8, 0xe6d8ff], water: [0x0b6f9e, 0x48c6d6], sand: 0xe8d2a0,
     points: [[0, -1], [0.45, -0.9], [0.55, -0.55], [0.9, -0.7], [1, -0.25], [0.65, 0.05], [0.95, 0.4], [0.7, 0.9], [0.3, 0.65],
              [0.05, 0.95], [-0.35, 0.7], [-0.15, 0.35], [-0.6, 0.2], [-0.95, 0.5], [-1, 0], [-0.7, -0.35], [-0.95, -0.75], [-0.45, -0.95]],
