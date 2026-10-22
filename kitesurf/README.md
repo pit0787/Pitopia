@@ -36,19 +36,20 @@ Am besten das Handy **quer** halten.
   Checkpoint aus dem Stand neu. Über einen Kite drüberspringen geht!
 - **Tricks:** Im Sprung erneut „Sprung“ drücken. Ist der Trick vor der Landung fertig → Turbo.
   Sonst: Bauchklatscher.
-- **Zeitlimit:** Jedes Rennen dauert maximal 3:00 Minuten. Die Rundenzahl ist pro Strecke so gewählt,
-  dass ein Rennen ca. 2:20–2:45 dauert.
+- **Strecke:** Kein Rundkurs – jede Strecke führt einmal vom Start zum Ziel über abwechslungsreiche
+  Geraden und Kurven. Die Strecken sind breit genug für Überholmanöver nebeneinander.
+- **Zeitlimit:** Jedes Rennen dauert maximal 3:00 Minuten (je nach Strecke ca. 2:10–2:40).
 - **Wind:** Der Wind kommt pro Strecke aus einer festen Richtung (leicht zufällig gedreht, Pfeil oben im Bild).
   Halbwind ist am schnellsten, direkt gegen den Wind bist du langsamer. Die Kites fliegen auf der Lee-Seite
   und neigen sich mit dem Wind.
 
 ## Strecken
 
-| Strecke | Länge pro Runde | Runden |
+| Strecke | Länge (Start → Ziel) | Charakter |
 |---|---|---|
-| Sonnen-Lagune (kurz) | 1050 m | 5 |
-| Korallen-Riff (mittel) | 1750 m | 3 |
-| Sturm-Kap (lang) | 2700 m | 2 |
+| Sonnen-Küste (kurz) | ca. 4,2 km | lange Geraden, sanfte Kurven, 56 m breit |
+| Korallen-Riff (mittel) | ca. 5,1 km | viele Richtungswechsel, 52 m breit |
+| Sturm-Kap (lang) | ca. 6,0 km | lange Geraden und zwei Haarnadelkurven, 48 m breit |
 
 ## Charaktere (Werte 1–5)
 

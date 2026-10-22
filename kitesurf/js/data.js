@@ -33,26 +33,26 @@ const STAT_LABELS = {
 };
 
 // wind: Richtung in Grad, in die der Wind weht (0 = +z, 90 = +x).
-// Streckenform als normierte Kontrollpunkte (x, z). Die Strecke wird beim Laden
-// auf die Ziellänge skaliert. Rundenzahl so gewählt, dass ein Rennen ~2:30 dauert;
-// das Zeitlimit beträgt immer 3:00.
+// Strecken führen vom Start zum Ziel (keine Runden). Jede Strecke besteht aus Abschnitten
+// [Gerade in m, Kurve in Grad (+ = rechts), Kurvenradius]. straightScale kürzt alle Geraden,
+// damit ein Rennen sicher unter dem Zeitlimit von 3:00 bleibt.
 const TRACKS = [
   {
-    id: 'lagune', name: 'Sonnen-Lagune', difficulty: 'Kurz', length: 1050, laps: 5, width: 34, wind: 210,
+    id: 'lagune', name: 'Sonnen-Küste', difficulty: 'Kurz', width: 56, wind: 210, straightScale: 0.9,
     sky: [0x6fd0f2, 0xd9f6ff], water: [0x1aa3c8, 0x7fe3ee], sand: 0xf5e1a4,
-    points: [[0, -1], [0.75, -0.85], [1, -0.2], [0.8, 0.55], [0.25, 0.8], [-0.35, 0.95], [-0.9, 0.6], [-1, -0.1], [-0.6, -0.75]],
+    legs: [[260, 35], [380, -70], [420, 55], [300, -45, 90], [480, 80], [330, -100, 70], [400, 50], [350, -35], [420, 60], [300, -40], [360, 0]],
   },
   {
-    id: 'riff', name: 'Korallen-Riff', difficulty: 'Mittel', length: 1750, laps: 3, width: 32, wind: 120,
+    id: 'riff', name: 'Korallen-Riff', difficulty: 'Mittel', width: 52, wind: 120, straightScale: 0.94,
     sky: [0x78c8ff, 0xfff0d6], water: [0x0e8fbf, 0x5fe0d8], sand: 0xffd6a5,
-    points: [[0, -1], [0.6, -0.95], [0.95, -0.55], [0.6, -0.15], [0.95, 0.3], [0.75, 0.85], [0.15, 0.7], [-0.2, 0.25], [-0.55, 0.85],
-             [-0.95, 0.55], [-0.85, -0.05], [-0.45, -0.3], [-0.75, -0.75]],
+    legs: [[240, 80, 70], [300, -130, 65], [380, 60], [260, -95, 60], [420, 40], [300, 100, 65], [340, -120, 60], [400, 70], [280, -50],
+           [450, 85, 70], [300, -110, 60], [380, 45], [320, 0]],
   },
   {
-    id: 'kap', name: 'Sturm-Kap', difficulty: 'Lang', length: 2700, laps: 2, width: 30, wind: 320,
+    id: 'kap', name: 'Sturm-Kap', difficulty: 'Lang', width: 48, wind: 320, straightScale: 0.94,
     sky: [0x5a8fc8, 0xe6d8ff], water: [0x0b6f9e, 0x48c6d6], sand: 0xe8d2a0,
-    points: [[0, -1], [0.45, -0.9], [0.55, -0.55], [0.9, -0.7], [1, -0.25], [0.65, 0.05], [0.95, 0.4], [0.7, 0.9], [0.3, 0.65],
-             [0.05, 0.95], [-0.35, 0.7], [-0.15, 0.35], [-0.6, 0.2], [-0.95, 0.5], [-1, 0], [-0.7, -0.35], [-0.95, -0.75], [-0.45, -0.95]],
+    legs: [[260, 60], [420, -90, 65], [500, 40], [300, 165, 75], [380, -40], [300, -130, 70], [460, 70], [260, -60], [480, 100, 70],
+           [320, -150, 72], [420, 50], [300, -80], [380, 60], [300, 0]],
   },
 ];
 

@@ -21,6 +21,7 @@ function mulberry32(a) {
 }
 const hashStr = (s) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; };
 const fmtTime = (t) => { t = Math.max(0, t); const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1); };
+const fmtDist = (m) => (m >= 1000 ? (m / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(m / 10) * 10 + ' m');
 const fmtClock = (t) => { t = Math.max(0, Math.ceil(t)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
 
 const GRAV = 32;           // Schwerkraft beim Sprung
@@ -137,31 +138,43 @@ function beep(freq, dur = 0.12, type = 'sine', vol = 0.12, slide = 0) {
 // Strecken-Geometrie
 // ===================================================================
 const pathCache = {};
+const START_IDX = 30;      // Startlinie (Stützpunkte à ca. 2 m)
+const RUNOUT = 75;         // Auslauf hinter der Ziellinie
 function computePath(def) {
   if (pathCache[def.id]) return pathCache[def.id];
-  const mk = (s) => new THREE.CatmullRomCurve3(def.points.map((p) => new THREE.Vector3(p[0] * s, 0, p[1] * s)), true, 'centripetal');
-  let curve = mk(100);
-  curve = mk(100 * def.length / curve.getLength());
-  const L = curve.getLength();
-  const N = Math.round(L / 2);
-  const pts = curve.getSpacedPoints(N);
-  const x = new Float32Array(N), z = new Float32Array(N), tx = new Float32Array(N), tz = new Float32Array(N), curv = new Float32Array(N);
-  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  // Geraden und Kreisbögen im Abstand von ~2 m abtasten
+  const px = [0], pz = [0];
+  let cx = 0, cz = 0, h = 0;
+  const step = (d, dh) => { h -= dh; cx += Math.sin(h) * d; cz += Math.cos(h) * d; px.push(cx); pz.push(cz); };
+  for (const [len, deg, R = 80] of def.legs) {
+    const sl = len * (def.straightScale || 1), n = Math.max(1, Math.round(sl / 2));
+    for (let i = 0; i < n; i++) step(sl / n, 0);
+    if (deg) {
+      const a = deg * Math.PI / 180, arc = Math.abs(a) * R, m = Math.max(2, Math.round(arc / 2));
+      for (let i = 0; i < m; i++) step(arc / m, a / m);
+    }
+  }
+  const N = px.length;
+  const x = Float32Array.from(px), z = Float32Array.from(pz);
+  const tx = new Float32Array(N), tz = new Float32Array(N), curv = new Float32Array(N);
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, L = 0;
   for (let i = 0; i < N; i++) {
-    x[i] = pts[i].x; z[i] = pts[i].z;
     minX = Math.min(minX, x[i]); maxX = Math.max(maxX, x[i]);
     minZ = Math.min(minZ, z[i]); maxZ = Math.max(maxZ, z[i]);
+    if (i) L += Math.hypot(x[i] - x[i - 1], z[i] - z[i - 1]);
   }
   for (let i = 0; i < N; i++) {
-    const a = (i - 1 + N) % N, b = (i + 1) % N;
+    const a = Math.max(0, i - 1), b = Math.min(N - 1, i + 1);
     const dx = x[b] - x[a], dz = z[b] - z[a], l = Math.hypot(dx, dz) || 1;
     tx[i] = dx / l; tz[i] = dz / l;
   }
   for (let i = 0; i < N; i++) {
-    const j = (i + 12) % N;
+    const j = Math.min(N - 1, i + 12);
     curv[i] = Math.abs(wrapAngle(Math.atan2(tx[j], tz[j]) - Math.atan2(tx[i], tz[i])));
   }
-  return (pathCache[def.id] = { def, N, L, x, z, tx, tz, curv, minX, maxX, minZ, maxZ, width: def.width });
+  const finishIdx = N - 1 - RUNOUT;
+  const raceLen = (finishIdx - START_IDX) * (L / (N - 1));
+  return (pathCache[def.id] = { def, N, L, x, z, tx, tz, curv, minX, maxX, minZ, maxZ, width: def.width, finishIdx, raceLen, spacing: L / (N - 1) });
 }
 
 // ===================================================================
@@ -241,9 +254,11 @@ function buildWorld(def) {
     for (let i = 0; i < path.N; i += 3) best = Math.min(best, Math.hypot(x - path.x[i], z - path.z[i]));
     return best;
   };
-  for (let t = 0; t < 600 && islands.length < 16; t++) {
-    const r = 9 + rnd() * 22;
-    const x = path.minX - 110 + rnd() * (spanX + 220), z = path.minZ - 110 + rnd() * (spanZ + 220);
+  const islandCount = Math.round(path.L / 110);
+  for (let t = 0; t < islandCount * 8 && islands.length < islandCount; t++) {
+    const r = 9 + rnd() * 24;
+    const i = Math.floor(rnd() * path.N), side = rnd() < 0.5 ? -1 : 1, off = side * (W / 2 + r + 30 + rnd() * 160);
+    const x = path.x[i] - path.tz[i] * off, z = path.z[i] + path.tx[i] * off;
     if (distToTrack(x, z) < W / 2 + r + 30) continue;
     if (islands.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + r + 18)) continue;
     islands.push({ x, z, r });
@@ -253,7 +268,7 @@ function buildWorld(def) {
   const margin = 300;
   const size = Math.max(spanX, spanZ) + margin * 2;
   const bx = cx - size / 2, bz = cz - size / 2;
-  const TS = 1024, ppu = TS / size;
+  const TS = 2048, ppu = TS / size;
   const mc = document.createElement('canvas'); mc.width = mc.height = TS;
   const g = mc.getContext('2d');
   g.fillStyle = '#000'; g.fillRect(0, 0, TS, TS);
@@ -266,11 +281,10 @@ function buildWorld(def) {
   g.lineJoin = 'round'; g.lineCap = 'round';
   const tracePath = () => {
     g.beginPath();
-    for (let i = 0; i <= path.N; i++) {
-      const k = i % path.N, px = (path.x[k] - bx) * ppu, pz = (path.z[k] - bz) * ppu;
-      if (i === 0) g.moveTo(px, pz); else g.lineTo(px, pz);
+    for (let k = 0; k < path.N; k++) {
+      const px = (path.x[k] - bx) * ppu, pz = (path.z[k] - bz) * ppu;
+      if (k === 0) g.moveTo(px, pz); else g.lineTo(px, pz);
     }
-    g.closePath();
   };
   tracePath(); g.lineWidth = (W + 4) * ppu; g.strokeStyle = 'rgb(255,0,255)'; g.stroke();
   tracePath(); g.lineWidth = (W - 2) * ppu; g.strokeStyle = 'rgb(255,0,0)'; g.stroke();
@@ -318,7 +332,7 @@ function buildWorld(def) {
         gl_FragColor = vec4(col, 1.0);
       }`,
   });
-  const wGeo = new THREE.PlaneGeometry(size + 1800, size + 1800, 160, 160);
+  const wGeo = new THREE.PlaneGeometry(size + 1800, size + 1800, 256, 256);
   wGeo.rotateX(-Math.PI / 2);
   wGeo.translate(cx, 0, cz);
   const water = new THREE.Mesh(wGeo, waterMat);
@@ -346,12 +360,13 @@ function buildWorld(def) {
     }
     batch.bake(grp);
   }
-  // Ferne Hügel
-  const R0 = Math.max(spanX, spanZ) * 0.5 + 380;
-  for (let k = 0; k < 14; k++) {
-    const a = (k / 14) * TAU + rnd() * 0.3, r = R0 + rnd() * 160, s = 60 + rnd() * 90;
+  // Ferne Hügel links und rechts der Strecke
+  for (let k = 0; k < path.L / 140; k++) {
+    const i = Math.floor(rnd() * path.N), s = 60 + rnd() * 90, off = (rnd() < 0.5 ? -1 : 1) * (W / 2 + s + 260 + rnd() * 250);
+    const hx = path.x[i] - path.tz[i] * off, hz = path.z[i] + path.tx[i] * off;
+    if (distToTrack(hx, hz) < s + W / 2 + 120) continue;
     const hill = new THREE.Group();
-    hill.position.set(cx + Math.sin(a) * r, 0, cz + Math.cos(a) * r);
+    hill.position.set(hx, 0, hz);
     hill.add(ball(0x4fae6a, s, 0, 0, 0, 1, 0.55 + rnd() * 0.3, 1));
     hill.add(ball(def.sand, s * 1.08, 0, 0, 0, 1, 0.12, 1));
     batch.bake(hill);
@@ -365,31 +380,32 @@ function buildWorld(def) {
       batch.bake(ball(col, 0.85, path.x[i] - path.tz[i] * off, 0.25, path.z[i] + path.tx[i] * off));
     }
   }
-  // Start/Ziel-Bogen aus aufblasbaren Kugeln
-  {
-    const R = W / 2 + 3, i = 0;
-    const rx = -path.tz[i], rz = path.tx[i];
-    for (let k = 0; k <= 26; k++) {
-      const a = (k / 26) * Math.PI;
-      batch.bake(ball(k % 2 ? 0xffffff : 0xff4f4f, 1.5, path.x[i] + rx * Math.cos(a) * R, Math.sin(a) * R * 1.15, path.z[i] + rz * Math.cos(a) * R));
+  // Start- und Ziel-Bogen aus aufblasbaren Kugeln
+  const arch = (i, label, c1, c2) => {
+    const R = W / 2 + 3, rx = -path.tz[i], rz = path.tx[i];
+    for (let k = 0; k <= 34; k++) {
+      const a = (k / 34) * Math.PI;
+      batch.bake(ball(k % 2 ? c1 : c2, 1.6, path.x[i] + rx * Math.cos(a) * R, Math.sin(a) * R * 0.8, path.z[i] + rz * Math.cos(a) * R));
     }
     const bc = document.createElement('canvas'); bc.width = 512; bc.height = 64;
     const b = bc.getContext('2d');
     for (let k = 0; k < 32; k++) for (let j = 0; j < 4; j++) { b.fillStyle = (k + j) % 2 ? '#222' : '#fff'; b.fillRect(k * 16, j * 16, 16, 16); }
     b.fillStyle = '#ffd23f'; b.fillRect(150, 6, 212, 52);
     b.font = '900 40px system-ui, sans-serif'; b.textAlign = 'center'; b.textBaseline = 'middle'; b.fillStyle = '#6b3b00';
-    b.fillText('START · ZIEL', 256, 34);
-    const banner = new THREE.Mesh(new THREE.PlaneGeometry(R * 1.3, R * 1.3 / 8), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(bc), side: THREE.DoubleSide, fog: false }));
-    banner.position.set(path.x[i], R * 1.15 - 1.6, path.z[i]);
-    banner.rotation.y = Math.atan2(path.tx[i], path.tz[i]);
+    b.fillText(label, 256, 34);
+    const banner = new THREE.Mesh(new THREE.PlaneGeometry(R * 1.1, R * 1.1 / 8), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(bc), side: THREE.DoubleSide, fog: false }));
+    banner.position.set(path.x[i], R * 0.8 - 1.8, path.z[i]);
+    banner.rotation.y = Math.atan2(path.tx[i], path.tz[i]) + Math.PI;   // lesbar für ankommende Fahrer
     world.add(banner);
-  }
+  };
+  arch(START_IDX, 'START', 0xffffff, 0x3fbf5a);
+  arch(path.finishIdx, 'ZIEL', 0xffffff, 0xff4f4f);
   // Wolken
   const cloudMat = toon(0xffffff, { fog: false });
-  for (let k = 0; k < 18; k++) {
-    const a = rnd() * TAU, r = 200 + rnd() * 700;
+  for (let k = 0; k < path.L / 160; k++) {
+    const i = Math.floor(rnd() * path.N), off = (rnd() * 2 - 1) * 500;
     const cl = new THREE.Group();
-    cl.position.set(cx + Math.sin(a) * r, 90 + rnd() * 70, cz + Math.cos(a) * r);
+    cl.position.set(path.x[i] - path.tz[i] * off, 90 + rnd() * 70, path.z[i] + path.tx[i] * off);
     for (let j = 0; j < 4; j++) {
       const m = new THREE.Mesh(GEO.sphereLo, cloudMat);
       const s = 10 + rnd() * 10;
@@ -401,11 +417,10 @@ function buildWorld(def) {
   }
   batch.build(world);
 
-  // --- Itemboxen (4 Reihen pro Runde)
+  // --- Itemboxen: alle ~500 m eine Reihe quer über die Strecke
   itemBoxes = [];
-  for (const f of [0.14, 0.38, 0.62, 0.84]) {
-    const i = Math.floor(path.N * f);
-    for (const l of [-0.33, -0.11, 0.11, 0.33]) {
+  for (let i = START_IDX + 110; i < path.finishIdx - 40; i += 250) {
+    for (const l of [-0.36, -0.18, 0, 0.18, 0.36]) {
       const off = l * W;
       const x = path.x[i] - path.tz[i] * off, z = path.z[i] + path.tx[i] * off;
       const grp = new THREE.Group();
@@ -430,8 +445,11 @@ function buildWorld(def) {
 let kiteLines = null;
 
 // Bodenpunkt und Fahrtrichtung für eine Position auf der Strecke
+// Reststrecke bis zum Ziel in Metern
+const remaining = (r) => Math.max(0, (path.finishIdx - r.idx) * path.spacing);
+
 function trackPoint(i, lat) {
-  i = ((i % path.N) + path.N) % path.N;
+  i = clamp(Math.round(i), 0, path.N - 1);
   return { x: path.x[i] - path.tz[i] * lat, z: path.z[i] + path.tx[i] * lat, h: Math.atan2(path.tx[i], path.tz[i]) };
 }
 
@@ -606,7 +624,7 @@ class Rider {
   reset() {
     Object.assign(this, {
       x: 0, z: 0, h: 0, y: 0, vy: 0, speed: 0, power: 100, exhausted: false, edging: false,
-      idx: 0, lap: -1, lat: 0, offTrack: false, progress: 0, rank: 1,
+      idx: 0, lat: 0, offTrack: false, progress: 0, rank: 1,
       boost: 0, slow: 0, inv: 0, shieldT: 0, crash: null, finished: false, finishTime: 0,
       item: null, itemCount: 0, roll: 0, rollItem: null,
       trickT: 0, tricks: 0, trickType: 0, trickSpin: 0, steerVis: 0, speedMul: 1,
@@ -642,12 +660,13 @@ function setupRace(def, playerChar) {
   const order = others.slice();
   if (playerChar >= 0) order.splice(4, 0, CHARACTERS[playerChar]);
   else order.push(others[0] === CHARACTERS[0] ? CHARACTERS[1] : CHARACTERS[0]);
+  // Startaufstellung: zwei Reihen à vier Fahrer hinter der Startlinie
   order.slice(0, 8).forEach((def, i) => {
     const r = new Rider(def, playerChar >= 0 && def === CHARACTERS[playerChar]);
-    const p = trackPoint(path.N - 6 - i * 4, (i % 2 ? 1 : -1) * 7);
+    r.idx = START_IDX - 4 - Math.floor(i / 4) * 7;
+    const p = trackPoint(r.idx, ((i % 4) - 1.5) * 12);
     r.x = p.x; r.z = p.z; r.h = p.h;
-    r.idx = ((path.N - 6 - i * 4) % path.N + path.N) % path.N;
-    r.progress = (r.lap * path.N) + r.idx;
+    r.progress = r.idx;
     riders.push(r);
   });
   player = riders.find((r) => r.isPlayer) || null;
@@ -739,7 +758,7 @@ function aiControl(r, dt) {
   ai.avoid = clamp(ai.avoid, -14, 14);
 
   const la = Math.round(8 + r.speed * 0.3);
-  const ti = (r.idx + la) % N;
+  const ti = Math.min(N - 1, r.idx + la);
   const lat = clamp(ai.lane * path.width * 0.4 + ai.avoid, -path.width * 0.48, path.width * 0.48);
   const tx = path.x[ti] - path.tz[ti] * lat, tz = path.z[ti] + path.tx[ti] * lat;
   const diff = wrapAngle(Math.atan2(tx - r.x, tz - r.z) - r.h);
@@ -889,10 +908,10 @@ function crash(r, type, by) {
 }
 
 function respawn(r) {
-  const seg = path.N / 8;
-  const cp = Math.floor(r.idx / seg) * seg | 0;
+  const seg = path.N / 16;
+  const cp = Math.max(START_IDX, Math.floor(r.idx / seg) * seg | 0);
   let best = 0, bestD = -1;
-  for (const lat of [-9, 0, 9]) {
+  for (const lat of [-16, -8, 0, 8, 16]) {
     const p = trackPoint(cp, lat);
     let d = Infinity;
     for (const o of riders) if (o !== r) d = Math.min(d, Math.hypot(o.x - p.x, o.z - p.z));
@@ -975,6 +994,7 @@ function physics(r, c, dt) {
   if (r.boost > 0) maxS *= 1.45;
   if (r.slow > 0) maxS *= 0.55;
   if (r.offTrack && !air) maxS *= r.offFactor;
+  if (r.finished) maxS = Math.min(maxS, 8);   // nach dem Ziel ausrollen
   maxS *= windFactor(r.fx, r.fz);
   if (r.speed < maxS) r.speed = Math.min(maxS, r.speed + (r.boost > 0 ? 45 : r.accel * (edging ? 1.4 : 1)) * dt);
   else r.speed = Math.max(maxS, r.speed - (air ? 3 : 20) * dt);
@@ -996,14 +1016,18 @@ function physics(r, c, dt) {
 function locate(r, dt) {
   const N = path.N;
   let best = r.idx, bd = Infinity;
-  for (let k = -14; k <= 14; k++) {
-    const i = (r.idx + k + N) % N;
+  for (let i = Math.max(0, r.idx - 14), e = Math.min(N - 1, r.idx + 14); i <= e; i++) {
     const dx = r.x - path.x[i], dz = r.z - path.z[i], d = dx * dx + dz * dz;
     if (d < bd) { bd = d; best = i; }
   }
-  if (r.idx > N * 0.75 && best < N * 0.25) r.lap++;
-  else if (r.idx < N * 0.25 && best > N * 0.75) r.lap--;
   r.idx = best;
+  // Anfang und Ende der Strecke begrenzen
+  if (best === 0 || best === N - 1) {
+    const along = (r.x - path.x[best]) * path.tx[best] + (r.z - path.z[best]) * path.tz[best];
+    if ((best === 0 && along < 0) || (best === N - 1 && along > 0)) {
+      r.x -= path.tx[best] * along; r.z -= path.tz[best] * along; r.speed *= 0.9;
+    }
+  }
   const rx = -path.tz[best], rz = path.tx[best];
   r.lat = (r.x - path.x[best]) * rx + (r.z - path.z[best]) * rz;
   r.offTrack = Math.abs(r.lat) > path.width / 2;
@@ -1014,8 +1038,8 @@ function locate(r, dt) {
     r.x -= rx * over; r.z -= rz * over; r.lat -= over;
     r.speed *= 0.97;
   }
-  r.progress = r.lap * N + best;
-  if (!r.finished && r.lap >= trackDef.laps) {
+  r.progress = best;
+  if (!r.finished && best >= path.finishIdx) {
     r.finished = true; r.finishTime = raceTime;
     if (r.isPlayer) onPlayerFinish();
   }
@@ -1245,7 +1269,7 @@ function updateMenuCam(dt) {
 // HUD
 // ===================================================================
 const hud = {
-  pos: $('pos-num'), lap: $('lap-num'), lapTotal: $('lap-total'), timer: $('timer'),
+  pos: $('pos-num'), lap: $('lap-num'), timer: $('timer'),
   power: $('power-fill'), powerVal: $('power-val'), itemBtn: $('item-btn'), itemIcon: $('item-icon'),
   msg: $('message'), jump: $('btn-jump'), edge: $('btn-edge'), wind: $('wind-arrow'),
 };
@@ -1266,7 +1290,7 @@ function updateHud(dt) {
   if (msgTimer > 0) { msgTimer -= dt; if (msgTimer <= 0) hud.msg.classList.remove('show'); }
   if (!player) return;
   setHud('pos', hud.pos, String(player.rank));
-  setHud('lap', hud.lap, String(clamp(player.lap + 1, 1, trackDef.laps)));
+  setHud('lap', hud.lap, fmtDist(remaining(player)));
   const left = RACE_TIME_LIMIT - raceTime;
   setHud('timer', hud.timer, fmtClock(state === 'countdown' ? RACE_TIME_LIMIT : left));
   hud.timer.classList.toggle('low', left < 30 && state === 'race');
@@ -1297,12 +1321,15 @@ function buildMinimapBase() {
   mmT = (x, z) => [ox + x * s, oz + z * s];
   g.lineJoin = 'round';
   g.beginPath();
-  for (let i = 0; i <= path.N; i += 4) { const [px, pz] = mmT(path.x[i % path.N], path.z[i % path.N]); i ? g.lineTo(px, pz) : g.moveTo(px, pz); }
-  g.closePath();
+  for (let i = 0; i < path.N; i += 4) { const [px, pz] = mmT(path.x[i], path.z[i]); i ? g.lineTo(px, pz) : g.moveTo(px, pz); }
+  g.lineCap = 'round';
   g.lineWidth = 9; g.strokeStyle = 'rgba(255,255,255,.9)'; g.stroke();
   g.lineWidth = 5; g.strokeStyle = '#1b7fa3'; g.stroke();
-  const [sx, sz] = mmT(path.x[0], path.z[0]);
-  g.fillStyle = '#fff'; g.fillRect(sx - 4, sz - 4, 8, 8);
+  const [sx, sz] = mmT(path.x[START_IDX], path.z[START_IDX]);
+  g.fillStyle = '#3fbf5a'; g.beginPath(); g.arc(sx, sz, 5, 0, TAU); g.fill();
+  const [fx, fz] = mmT(path.x[path.finishIdx], path.z[path.finishIdx]);
+  g.fillStyle = '#fff'; g.fillRect(fx - 5, fz - 5, 10, 10);
+  g.fillStyle = '#222'; g.fillRect(fx - 5, fz - 5, 5, 5); g.fillRect(fx, fz, 5, 5);
 }
 function drawMinimap() {
   mmCtx.clearRect(0, 0, 140, 140);
@@ -1344,7 +1371,7 @@ function rubberBand(r, dt) {
   r.speedMul = lerp(r.speedMul, want, damp(0.5, dt));
 }
 
-let lastLapMsg = -2;
+let lastLapMsg = -2, demoEnd = 0;
 function simulate(dt) {
   worldTime += dt;
   wind.gust = 1 + 0.18 * Math.sin(worldTime * 0.37) + 0.1 * Math.sin(worldTime * 1.13 + 2);
@@ -1376,11 +1403,18 @@ function simulate(dt) {
 
   if (state === 'race' && player) {
     raceTime += dt;
-    if (player.lap === trackDef.laps - 1 && lastLapMsg !== player.lap && trackDef.laps > 1) {
-      lastLapMsg = player.lap; showMsg('Letzte Runde!', 1.8); beep(660, 0.15); beep(990, 0.3);
+    const rest = remaining(player);
+    if (rest < 500 && lastLapMsg !== 500) {
+      lastLapMsg = 500; showMsg('Endspurt!', 1.8, 'Noch 500 m bis zum Ziel'); beep(660, 0.15); beep(990, 0.3);
+    } else if (rest < path.raceLen / 2 && lastLapMsg < 0) {
+      lastLapMsg = 1; showMsg('Halbzeit!', 1.4, 'Noch ' + fmtDist(rest));
     }
     if (player.wrongWay > 1.2) showMsg('Falsche Richtung!', 0.3);
     if (raceTime >= RACE_TIME_LIMIT) { timeUp = true; showResults(); }
+  }
+  if (state === 'menu') {
+    demoEnd = riders.some((r) => r.finished) ? demoEnd + dt : 0;
+    if (demoEnd > 5) startMenuDemo();
   }
   if (state === 'finished') {
     raceTime += dt;
@@ -1468,14 +1502,15 @@ function buildTrackGrid() {
     const s = 130 / span, ox = 120 - ((p.minX + p.maxX) / 2) * s, oz = 80 - ((p.minZ + p.maxZ) / 2) * s;
     g.lineJoin = 'round';
     g.beginPath();
-    for (let k = 0; k <= p.N; k += 3) { const q = k % p.N; k ? g.lineTo(ox + p.x[q] * s, oz + p.z[q] * s) : g.moveTo(ox + p.x[q] * s, oz + p.z[q] * s); }
-    g.closePath();
+    g.lineCap = 'round';
+    for (let k = 0; k < p.N; k += 3) { k ? g.lineTo(ox + p.x[k] * s, oz + p.z[k] * s) : g.moveTo(ox + p.x[k] * s, oz + p.z[k] * s); }
     g.lineWidth = 12; g.strokeStyle = '#fff'; g.stroke();
     g.lineWidth = 7; g.strokeStyle = '#' + new THREE.Color(t.water[0]).getHexString(); g.stroke();
-    g.fillStyle = '#ffd23f'; g.beginPath(); g.arc(ox + p.x[0] * s, oz + p.z[0] * s, 7, 0, TAU); g.fill();
+    g.fillStyle = '#3fbf5a'; g.beginPath(); g.arc(ox + p.x[START_IDX] * s, oz + p.z[START_IDX] * s, 7, 0, TAU); g.fill();
+    g.fillStyle = '#ff4f4f'; g.beginPath(); g.arc(ox + p.x[p.finishIdx] * s, oz + p.z[p.finishIdx] * s, 7, 0, TAU); g.fill();
     el.appendChild(cv);
     const info = document.createElement('div');
-    info.innerHTML = `<div class="track-name">${t.name}</div><div class="track-info">${t.difficulty} · ${Math.round(p.L)} m pro Runde · ${t.laps} Runden<br>Zeitlimit 3:00</div>`;
+    info.innerHTML = `<div class="track-name">${t.name}</div><div class="track-info">${t.difficulty} · ${fmtDist(p.raceLen)} von Start bis Ziel<br>Zeitlimit 3:00</div>`;
     el.appendChild(info);
     el.addEventListener('click', () => {
       selTrack = i;
@@ -1502,7 +1537,6 @@ function goFullscreen() {
 function startRace() {
   show(null);
   setupRace(TRACKS[selTrack], selChar);
-  hud.lapTotal.textContent = trackDef.laps;
   lastHud = {}; lastLapMsg = -2; lastCount = 0;
   setRaceUI(true);
   state = 'countdown';
@@ -1511,6 +1545,7 @@ function startRace() {
 }
 
 function startMenuDemo() {
+  demoEnd = 0;
   setupRace(TRACKS[selTrack], -1);
   // Demo: Fahrer etwas verteilen, damit es lebendig aussieht
   riders.forEach((r, i) => { r.speed = 20; r.power = 40 + i * 7; });
@@ -1535,7 +1570,7 @@ function showResults() {
   $('result-table').innerHTML = sorted.map((r) => {
     let t;
     if (r.finished) t = fmtTime(r.finishTime);
-    else { const lapsLeft = trackDef.laps - Math.max(0, r.lap); t = `noch ${lapsLeft} ${lapsLeft === 1 ? 'Runde' : 'Runden'}`; }
+    else t = 'noch ' + fmtDist(remaining(r));
     return `<tr class="${r.isPlayer ? 'me' : ''}"><td>${r.rank}.</td><td>${r.def.emoji} ${r.def.name}${r.isPlayer ? ' (Du)' : ''}</td><td>${t}</td></tr>`;
   }).join('');
   setRaceUI(false);
