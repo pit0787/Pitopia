@@ -38,7 +38,7 @@ const STAT_LABELS = {
 // damit ein Rennen sicher unter dem Zeitlimit von 3:00 bleibt.
 const TRACKS = [
   {
-    id: 'lagune', name: 'Sonnen-Küste', difficulty: 'Kurz', width: 56, wind: 210, straightScale: 0.9,
+    id: 'lagune', name: 'Sonnen-Küste', difficulty: 'Kurz', width: 56, wind: 210, straightScale: 1.0,
     sky: [0x6fd0f2, 0xd9f6ff], water: [0x1aa3c8, 0x7fe3ee], sand: 0xf5e1a4,
     legs: [[260, 35], [380, -70], [420, 55], [300, -45, 90], [480, 80], [330, -100, 70], [400, 50], [350, -35], [420, 60], [300, -40], [360, 0]],
   },
@@ -56,7 +56,9 @@ const TRACKS = [
   },
 ];
 
-// Items: weight-Tabellen nach Platzierung (vorne / Mitte / hinten)
+// Items: Gewichtungen nach Abstand zum Führenden (nicht nach Platz).
+// Der Führende bekommt vor allem Verteidigung, dicht dahinter einfache Items,
+// wer weit zurückliegt die starken Aufhol-Items.
 const ITEMS = {
   boost:    { name: 'Wind-Böe',     icon: '💨', desc: 'Kurzer Turbo' },
   triple:   { name: '3x Böe',       icon: '🌪️', desc: 'Drei Turbos' },
@@ -68,10 +70,18 @@ const ITEMS = {
   calm:     { name: 'Flaute',       icon: '🌫️', desc: 'Alle vor dir verlieren Kraft & Tempo' },
 };
 
-const ITEM_TABLE = [
-  { seaweed: 30, torpedo: 30, energy: 20, boost: 15, shield: 5 },                          // vorne
-  { boost: 22, torpedo: 20, puffer: 18, energy: 15, shield: 10, triple: 10, seaweed: 5 },  // Mitte
-  { triple: 28, puffer: 24, boost: 14, energy: 12, shield: 10, calm: 12 },                 // hinten
+const ITEM_TABLE = {
+  lead:  { seaweed: 35, shield: 25, energy: 20, torpedo: 15, boost: 5 },                     // Platz 1
+  close: { boost: 28, torpedo: 25, seaweed: 15, energy: 17, shield: 15 },                    // < 60 m Rückstand
+  mid:   { boost: 20, puffer: 20, torpedo: 15, triple: 15, energy: 15, shield: 10, seaweed: 5 }, // < 200 m
+  far:   { triple: 28, puffer: 22, calm: 12, boost: 14, energy: 12, shield: 12 },             // weit hinten
+};
+
+// K.-o.-Cup: nach jedem Rennen scheiden die Letzten aus
+const CUP_ROUNDS = [
+  { name: 'Vorrunde', track: 0, out: 2 },
+  { name: 'Halbfinale', track: 1, out: 2 },
+  { name: 'Finale', track: 2, out: 0 },
 ];
 
 const RACE_TIME_LIMIT = 180; // Sekunden

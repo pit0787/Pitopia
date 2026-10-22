@@ -43,11 +43,29 @@ Am besten das Handy **quer** halten.
   Halbwind ist am schnellsten, direkt gegen den Wind bist du langsamer. Die Kites fliegen auf der Lee-Seite
   und neigen sich mit dem Wind.
 
+## Spielelemente
+
+- **Start-Turbo:** „Kante“ kurz vor „Los!“ (nach der 1) drücken und halten. Zu früh gedrückt = Fehlstart.
+- **Windschatten:** Dicht hinter einem anderen Fahrer lädt sich eine Leiste – voll = Turbo.
+  Zu nah dran verheddern sich aber die Kites.
+- **Wellen:** Wer über eine Welle fährt, springt gratis und extra hoch – ideal für Tricks.
+- **Bojen-Tore (Boardercross):** Durch die orangen Tore fahren gibt Turbo und +8 Kraft.
+- **Felsen:** bremsen stark ab – drüberspringen ist erlaubt.
+- **Böen-Felder:** helle, gestreifte Flecken auf dem Wasser: Turbo und +12 Kraft.
+  Der Wind dreht außerdem während des Rennens langsam um bis zu 25°.
+- **Abkürzungen:** In engen Kurven führt eine Rinne mit grünen Bojen quer hindurch.
+  Offen nur ab Platz 4 – für die Führenden ist es eine bremsende Sandbank.
+- **Items nach Abstand:** Wer führt, bekommt Verteidigungs-Items, dicht dahinter einfache Items,
+  wer weit (über 200 m) zurückliegt, die starken Aufhol-Items.
+- **Sanfte Aufholhilfe:** Computer-Fahrer werden höchstens ein paar Prozent schneller oder langsamer.
+- **K.-o.-Cup:** Drei Rennen auf allen drei Strecken. Nach Vorrunde (8 Fahrer) und Halbfinale (6)
+  scheiden jeweils die letzten zwei aus, im Finale fahren die besten vier um den Cup.
+
 ## Strecken
 
 | Strecke | Länge (Start → Ziel) | Charakter |
 |---|---|---|
-| Sonnen-Küste (kurz) | ca. 4,2 km | lange Geraden, sanfte Kurven, 56 m breit |
+| Sonnen-Küste (kurz) | ca. 4,6 km | lange Geraden, sanfte Kurven, 56 m breit |
 | Korallen-Riff (mittel) | ca. 5,1 km | viele Richtungswechsel, 52 m breit |
 | Sturm-Kap (lang) | ca. 6,0 km | lange Geraden und zwei Haarnadelkurven, 48 m breit |
 

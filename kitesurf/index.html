@@ -17,6 +17,7 @@
   <div id="hud-left">
     <div id="pos-box"><span id="pos-num">1</span><span id="pos-suffix">.</span><small id="pos-total">/8</small></div>
     <div id="lap-box">Ziel in <span id="lap-num">–</span></div>
+    <div id="round-box"></div>
     <canvas id="minimap" width="140" height="140"></canvas>
   </div>
   <div id="hud-center">
@@ -26,6 +27,7 @@
       <div id="power-bar"><div id="power-fill"></div><span id="power-val">100</span></div>
     </div>
     <div id="wind-box"><span id="wind-arrow">➜</span><span>Wind</span></div>
+    <div id="draft-box"><span>Windschatten</span><div id="draft-bar"><div id="draft-fill"></div></div></div>
   </div>
   <div id="hud-right">
     <button id="pause-btn" aria-label="Pause">II</button>
@@ -67,6 +69,13 @@
       <div><b>Kraft 0–100</b><br>Lädt sich langsam wieder auf, wenn du nicht ankantest – oder sofort mit dem Kokos-Drink.</div>
       <div><b>Wind</b><br>Der Wind kommt aus einer Richtung (Pfeil oben). Halbwind ist am schnellsten, direkt gegen den Wind bist du langsam.</div>
       <div><b>Achtung!</b><br>Berühren sich zwei Kites, verheddern sie sich: beide stürzen und starten vom letzten Checkpoint neu.</div>
+      <div><b>Start-Turbo</b><br>„Kante“ kurz vor „Los!“ drücken und halten (nach der 1). Zu früh = Fehlstart.</div>
+      <div><b>Windschatten</b><br>Fahr dicht hinter jemandem her: Die Leiste lädt sich, dann gibt's Turbo. Aber Abstand halten, sonst verheddern sich die Kites!</div>
+      <div><b>Wellen</b><br>Über eine Welle fahren = großer Gratis-Sprung. Perfekt für Tricks.</div>
+      <div><b>Bojen-Tore & Felsen</b><br>Durch die orangen Tore fahren gibt Turbo und Kraft. Felsen bremsen dich – drüberspringen geht.</div>
+      <div><b>Böen-Felder</b><br>Dunkle, gestreifte Flecken auf dem Wasser: Turbo und +12 Kraft. Der Wind dreht übrigens langsam.</div>
+      <div><b>Abkürzungen</b><br>In engen Kurven führt eine Rinne mit grünen Bojen quer hindurch. Offen nur ab Platz 4 – sonst ist es eine Sandbank.</div>
+      <div><b>K.-o.-Cup</b><br>Drei Rennen nacheinander. Nach Vorrunde und Halbfinale scheiden jeweils die letzten zwei aus.</div>
     </div>
     <p class="keys">Tastatur: ←/→ lenken · Leertaste Sprung · Shift/↑ Kante · E Item · P Pause</p>
     <button class="menu-btn primary" data-back="menu-title">Zurück</button>
@@ -90,6 +99,7 @@
     <div id="track-grid"></div>
     <div class="row">
       <button class="menu-btn" data-back="menu-chars">Zurück</button>
+      <button class="menu-btn" id="btn-cup">🏆 K.-o.-Cup</button>
       <button class="menu-btn primary" id="btn-race">Rennen starten</button>
     </div>
   </div>
