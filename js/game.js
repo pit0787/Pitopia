@@ -860,7 +860,9 @@ function setupRace(def, playerChar, field) {
     const r = new Rider(def, isP, kite, board);
     r.kiteSize = size; r.sizeFx = sizeEffect(size / ideal);
     r.jumpV *= Math.sqrt(r.sizeFx.jump);
-    r.mesh.kite.scale.setScalar(0.7 + size / 30);   // größere Kites sehen auch größer aus
+    // Sichtbare Größe: 10 m² = normal, 6 m² deutlich kleiner, 15 m² deutlich größer
+    r.kScale = Math.pow(size / 10, 0.8);
+    r.mesh.kite.scale.setScalar(r.kScale);
     r.idx = START_IDX - 4 - Math.floor(i / 4) * 7;
     const p = trackPoint(r.idx, ((i % 4) - 1.5) * 12);
     r.x = p.x; r.z = p.z; r.h = p.h;
@@ -1479,7 +1481,7 @@ function collisions() {
       if (raceTime < 4) continue;                 // Schonzeit direkt nach dem Start
       if (Math.abs(a.ky - b.ky) > 5) continue;
       const kd = Math.hypot(a.kx - b.kx, a.kz - b.kz);
-      if (kd < KITE_HIT && a.inv <= 0 && b.inv <= 0) {
+      if (kd < KITE_HIT * ((a.kScale || 1) + (b.kScale || 1)) / 2 && a.inv <= 0 && b.inv <= 0) {   // große Kites verheddern sich leichter
         const aShield = a.shieldT > 0, bShield = b.shieldT > 0;
         crash(a, 'tangle', b);
         crash(b, 'tangle', a);
