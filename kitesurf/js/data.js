@@ -38,18 +38,18 @@ const STAT_LABELS = {
 // damit ein Rennen sicher unter dem Zeitlimit von 3:00 bleibt.
 const TRACKS = [
   {
-    id: 'lagune', name: 'Sonnen-Küste', difficulty: 'Kurz', width: 56, wind: 210, straightScale: 1.0,
+    id: 'lagune', name: 'Sonnen-Küste', difficulty: 'Kurz', width: 56, wind: 210, knots: [10, 16], straightScale: 1.0,
     sky: [0x6fd0f2, 0xd9f6ff], water: [0x1aa3c8, 0x7fe3ee], sand: 0xf5e1a4,
     legs: [[260, 35], [380, -70], [420, 55], [300, -45, 90], [480, 80], [330, -100, 70], [400, 50], [350, -35], [420, 60], [300, -40], [360, 0]],
   },
   {
-    id: 'riff', name: 'Korallen-Riff', difficulty: 'Mittel', width: 52, wind: 120, straightScale: 0.94,
+    id: 'riff', name: 'Korallen-Riff', difficulty: 'Mittel', width: 52, wind: 120, knots: [14, 22], straightScale: 0.94,
     sky: [0x78c8ff, 0xfff0d6], water: [0x0e8fbf, 0x5fe0d8], sand: 0xffd6a5,
     legs: [[240, 80, 70], [300, -130, 65], [380, 60], [260, -95, 60], [420, 40], [300, 100, 65], [340, -120, 60], [400, 70], [280, -50],
            [450, 85, 70], [300, -110, 60], [380, 45], [320, 0]],
   },
   {
-    id: 'kap', name: 'Sturm-Kap', difficulty: 'Lang', width: 48, wind: 320, straightScale: 0.94,
+    id: 'kap', name: 'Sturm-Kap', difficulty: 'Lang', width: 48, wind: 320, knots: [20, 30], straightScale: 0.94,
     sky: [0x5a8fc8, 0xe6d8ff], water: [0x0b6f9e, 0x48c6d6], sand: 0xe8d2a0,
     legs: [[260, 60], [420, -90, 65], [500, 40], [300, 165, 75], [380, -40], [300, -130, 70], [460, 70], [260, -60], [480, 100, 70],
            [320, -150, 72], [420, 50], [300, -80], [380, 60], [300, 0]],
@@ -149,3 +149,26 @@ const BOARDS = [
     desc: 'Läuft schnell geradeaus', c1: 0x8a3bff, c2: 0x8ff0ff,
     stats: { speed: 5, agility: 2, skill: 3, jump: 3, trick: 2 } },
 ];
+
+// ===================================================================
+// Kitegröße und Windstärke
+// Grundlage: Größentabelle von Airush für Fahrer mit 70–80 kg auf dem Twintip
+// (10–13 kn: 13–15 m², 14–17 kn: 11–12 m², 18–22 kn: 9–10 m², 23–28 kn: 7–8 m²).
+// Dazwischen wird linear interpoliert; alle Fahrer gelten als ca. 75 kg schwer.
+// ===================================================================
+const KITE_SIZES = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+const SIZE_TABLE = [[8, 15], [11.5, 14], [15.5, 11.5], [20, 9.5], [25.5, 7.5], [31, 6], [35, 5.5]];
+function idealKiteSize(kn) {
+  for (let i = 1; i < SIZE_TABLE.length; i++) {
+    const [k0, s0] = SIZE_TABLE[i - 1], [k1, s1] = SIZE_TABLE[i];
+    if (kn <= k1) return s0 + (s1 - s0) * Math.max(0, (kn - k0) / (k1 - k0));
+  }
+  return SIZE_TABLE[SIZE_TABLE.length - 1][1];
+}
+// Beaufort-Skala (Grenzen in Knoten)
+const BEAUFORT = [[1, 'Windstille'], [3, 'leiser Zug'], [6, 'leichte Brise'], [10, 'schwache Brise'], [16, 'mäßige Brise'],
+                  [21, 'frische Brise'], [27, 'starker Wind'], [33, 'steifer Wind'], [40, 'stürmischer Wind'], [99, 'Sturm']];
+function beaufort(kn) {
+  const i = BEAUFORT.findIndex(([max]) => kn <= max);
+  return { bft: i, name: BEAUFORT[i][1] };
+}

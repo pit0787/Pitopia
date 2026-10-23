@@ -82,6 +82,20 @@ Sensordaten – dafür das Spiel direkt im Handy-Browser öffnen (z. B. über Gi
 - **K.-o.-Cup:** Drei Rennen auf allen drei Strecken. Nach Vorrunde (8 Fahrer) und Halbfinale (6)
   scheiden jeweils die letzten zwei aus, im Finale fahren die besten vier um den Cup.
 
+## Wind und Kitegröße
+
+Vor jedem Rennen kommt ein **Windbericht**: Windstärke in Knoten und Beaufort sowie die empfohlene
+Kitegröße. Du wählst die Größe (6–15 m²) selbst. Grundlage ist die Größentabelle von Airush für
+Fahrer mit 70–80 kg (10–13 kn: 13–15 m², 14–17 kn: 11–12 m², 18–22 kn: 9–10 m², 23–28 kn: 7–8 m²);
+alle Fahrer gelten als ca. 75 kg schwer.
+
+- **Passend (±10 %):** volle Kontrolle.
+- **Zu klein:** deutlich langsamer (bis −50 % Tempo) und weniger Sprunghöhe.
+- **Zu groß:** schneller (bis +25 %), aber schlechter zu lenken (bis −55 % Lenkung).
+
+Windbereiche: Sonnen-Küste 10–16 kn, Korallen-Riff 14–22 kn, Sturm-Kap 20–30 kn. Die Gegner wählen
+meistens die passende Größe, manche greifen eine Nummer daneben.
+
 ## Ausrüstung
 
 Vor dem Rennen wählst du nach dem Fahrer einen **Kite** und ein **Twintip-Board**. Die Modelle gibt es
