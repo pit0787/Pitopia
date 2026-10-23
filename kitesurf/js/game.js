@@ -1,4 +1,4 @@
-// Kite Kart – Kitesurf-Rennspiel
+// Kitekids – Kitesurf-Rennspiel
 (() => {
 'use strict';
 
@@ -2013,7 +2013,7 @@ function onOrientation() {
     if (!fsHintShown) {
       fsHintShown = true;
       const h = $('fs-hint');
-      h.textContent = 'Für Vollbild: Teilen → „Zum Home-Bildschirm“ und Kite Kart von dort starten';
+      h.textContent = 'Für Vollbild: Teilen → „Zum Home-Bildschirm“ und Kitekids von dort starten';
       h.classList.remove('hidden');
       setTimeout(() => h.classList.add('hidden'), 6000);
     }
