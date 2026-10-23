@@ -1932,17 +1932,9 @@ function buildCharGrid() {
 const statPips = (stats) => Object.keys(STAT_LABELS).map((k) =>
   `<div class="stat"><label>${STAT_LABELS[k]}</label><div class="pips">${[1, 2, 3, 4, 5].map((n) => `<i class="pip${n <= stats[k] ? ' on' : ''}"></i>`).join('')}</div></div>`).join('');
 const hex = (c) => '#' + new THREE.Color(c).getHexString();
-function gearTotal(el) {
-  const ch = CHARACTERS[selChar], tot = combineStats(ch, KITES[selKite], BOARDS[selBoard]);
-  const parts = Object.keys(STAT_LABELS).map((k) => {
-    const d = tot[k] - ch.stats[k], cls = d > 0 ? 'up' : d < 0 ? 'down' : '';
-    return `${STAT_LABELS[k]} <b>${String(tot[k]).replace('.', ',')}</b>${d ? ` <span class="${cls}">(${d > 0 ? '+' : ''}${String(d).replace('.', ',')})</span>` : ''}`;
-  });
-  el.innerHTML = `<b>${ch.name}</b> mit ${KITES[selKite].model} + ${BOARDS[selBoard].model}: ` + parts.join(' · ');
-}
 function buildGearGrid(kind) {
   const list = kind === 'kite' ? KITES : BOARDS;
-  const grid = $(kind + '-grid'), total = $(kind + '-total');
+  const grid = $(kind + '-grid');
   grid.innerHTML = '';
   list.forEach((g, i) => {
     const el = document.createElement('button');
@@ -1955,12 +1947,10 @@ function buildGearGrid(kind) {
       if (kind === 'kite') selKite = i; else selBoard = i;
       try { localStorage.setItem('kk_' + kind, i); } catch (e) { /* egal */ }
       grid.querySelectorAll('.char-card').forEach((n, k) => n.classList.toggle('selected', k === i));
-      gearTotal(total);
       beep(560 + i * 40, 0.08, 'triangle');
     });
     grid.appendChild(el);
   });
-  gearTotal(total);
 }
 
 function buildTrackGrid() {

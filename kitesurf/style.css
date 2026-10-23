@@ -49,10 +49,6 @@ h2 { margin: 0 0 12px; font-size: clamp(22px, 5vw, 32px); text-align: center; co
 /* Character select */
 #char-grid, .gear-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .gear-swatch { position: relative; }
-.gear-total { margin-top: 10px; font-size: 13px; color: #345; background: #e9f7fc; border-radius: 14px; padding: 6px 10px; }
-.gear-total b { color: #1b5f86; }
-.gear-total .up { color: #2f9e44; font-weight: 800; }
-.gear-total .down { color: #d33; font-weight: 800; }
 .char-card {
   border: 0; border-radius: 22px; background: #eef8fc; padding: 8px 8px 10px; text-align: left; color: #234;
   box-shadow: 0 4px 0 #c5e3ee; transition: transform .1s;
