@@ -1515,7 +1515,7 @@ function updateProjectiles(dt) {
 // ===================================================================
 // Partikel (Gischt)
 // ===================================================================
-const SPRAY_MAX = 420;
+const SPRAY_MAX = 2200;
 const spray = new THREE.InstancedMesh(GEO.sphereLo, new THREE.MeshBasicMaterial({ color: 0xffffff }), SPRAY_MAX);
 spray.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 spray.frustumCulled = false;
@@ -1630,29 +1630,25 @@ function updateRiderVisual(r, dt, li) {
     arr[o + 3] = r.x + fx * 1 - rx * side * 0.6; arr[o + 4] = hy; arr[o + 5] = r.z + fz * 1 - rz * side * 0.6;
   }
 
-  // Ankanten: gleichmäßiger Gischt-Vorhang entlang des Bretts in Richtung des Kites
-  if (r.edging && !r.airborne && !r.crash && r.speed > 6) {
-    const perSec = r.isPlayer ? 70 : 22;
-    r.edgeAcc = (r.edgeAcc || 0) + perSec * dt;
-    while (r.edgeAcc > 1) {
-      r.edgeAcc--;
-      r.edgeSlot = ((r.edgeSlot || 0) + 1) % 7;          // Positionen der Reihe nach entlang der Kante
-      const along = (r.edgeSlot / 6 - 0.5) * 2.6;
-      const sp = 7 + r.speed * 0.12;
-      emitSpray(r.x + fx * along + r.kdx * 0.6, 0.25 + wave, r.z + fz * along + r.kdz * 0.6,
-        r.kdx * sp + fx * r.speed * 0.15, 4.5, r.kdz * sp + fz * r.speed * 0.15, 0.45, 0.2);
-    }
-  }
-  // Gischt hinter dem Brett
-  if (!r.airborne && r.speed > 6 && !r.crash) {
-    const rate = r.speed * 0.22 * (r.boost > 0 ? 1.6 : 1) * (r.isPlayer ? 1 : 0.6);
-    r.sprayAcc = (r.sprayAcc || 0) + rate * dt;
+  // Gischt: eine dichte Fahne, die nur an der Kite-Seite aus der Kante schießt und
+  // hinter dem Brett eine Wand bildet. Beim Ankanten deutlich höher, weiter und dichter.
+  if (!r.airborne && !r.crash && r.speed > 5) {
+    const ks = (rx * r.kdx + rz * r.kdz) >= 0 ? 1 : -1;        // auf welcher Seite steht der Kite?
+    const sx = rx * ks, sz = rz * ks;
+    const edge = r.edging ? 1 : 0;
+    const perSec = (r.isPlayer ? 1 : 0.25) * (120 + edge * 280) * clamp(r.speed / 35, 0.4, 1.6) * (r.boost > 0 ? 1.3 : 1);
+    r.sprayAcc = (r.sprayAcc || 0) + perSec * dt;
     while (r.sprayAcc > 1) {
       r.sprayAcc--;
-      const side = Math.random() < 0.5 ? -1 : 1;
-      emitSpray(r.x - fx * 1.8 + rx * side * 0.5, 0.2 + wave, r.z - fz * 1.8 + rz * side * 0.5,
-        -fx * r.speed * 0.08 + rx * side * (2 + Math.random() * 3), 3 + Math.random() * 4, -fz * r.speed * 0.08 + rz * side * (2 + Math.random() * 3),
-        0.45 + Math.random() * 0.3, 0.25 + Math.random() * 0.25);
+      const along = -1.4 + Math.random() * Math.random() * 2.2;   // dicht am Heck, nach vorne dünner
+      const out = (edge ? 8 : 3.5) + Math.random() * (edge ? 7 : 3);
+      const up = (edge ? 4.5 : 2.2) + Math.random() * (edge ? 4.5 : 2);
+      const carry = r.speed * (0.25 + Math.random() * 0.25);  // fliegt ein Stück mit, bleibt dann zurück
+      const mist = Math.random() < 0.18;                     // ab und zu ein großer Gischt-Ballen
+      emitSpray(r.x + fx * along + sx * 0.5, 0.2 + wave, r.z + fz * along + sz * 0.5,
+        sx * out + fx * carry, up * (mist ? 0.8 : 1), sz * out + fz * carry,
+        0.45 + Math.random() * (edge ? 0.45 : 0.25),
+        mist ? (edge ? 0.5 : 0.35) + Math.random() * 0.3 : (edge ? 0.14 : 0.11) + Math.random() * (edge ? 0.16 : 0.1));
     }
   }
 }
