@@ -552,12 +552,12 @@ function trackPoint(i, lat) {
 // ===================================================================
 // Charakter-Modelle
 // ===================================================================
-function buildKiteGeometry(c1, c2) {
-  const seg = 14, R = 3.6, A = 1.15;
+function buildKiteGeometry(c1, c2, shape = { A: 1.15, chord: 2.0, R: 3.6 }) {
+  const seg = 14, R = shape.R, A = shape.A;
   const pos = [], col = [];
   const C1 = new THREE.Color(c1), C2 = new THREE.Color(c2);
   const pt = (u, front) => {
-    const a = u * A, chord = 2.0 * (1 - 0.45 * u * u);
+    const a = u * A, chord = shape.chord * (1 - 0.45 * u * u);
     return [Math.sin(a) * R, Math.cos(a) * R - R, front ? chord * 0.6 : -chord * 0.4];
   };
   for (let i = 0; i < seg; i++) {
@@ -574,6 +574,64 @@ function buildKiteGeometry(c1, c2) {
   return geo;
 }
 
+// Twintip: symmetrisches Brett mit eckig-runden Enden, Rocker (aufgebogene Tips),
+// vier Finnen, zwei Fußschlaufen mit Pads und Griff in der Mitte
+const BOARD_L = 3.0, BOARD_W = 1.0;
+const boardY = (t) => 0.1 * t * t + 0.22 * Math.pow(Math.max(0, Math.abs(t) - 0.75) / 0.25, 2);
+const finGeo = new THREE.BoxGeometry(0.05, 0.22, 0.26);
+const strapGeo = new THREE.TorusGeometry(0.26, 0.07, 6, 14, Math.PI);
+function buildTwintipGeometry(c1, c2) {
+  const nz = 28, nx = 8, T = 0.05, cols = nx + 1, rows = nz + 1;
+  const C1 = new THREE.Color(c1), C2 = new THREE.Color(c2), CB = new THREE.Color(c1).multiplyScalar(0.65);
+  const pos = [], col = [], idx = [];
+  for (const top of [true, false]) {
+    for (let i = 0; i <= nz; i++) {
+      const t = (i / nz) * 2 - 1;
+      const w = BOARD_W / 2 * Math.pow(Math.max(0, 1 - Math.pow(Math.abs(t), 6)), 0.3);
+      for (let j = 0; j <= nx; j++) {
+        const x = ((j / nx) * 2 - 1) * w;
+        pos.push(x, boardY(t) + (top ? T : -T), t * BOARD_L / 2);
+        const c = !top ? CB : (Math.abs(x) < BOARD_W * 0.12 || Math.abs(t) > 0.86 ? C2 : C1);
+        col.push(c.r, c.g, c.b);
+      }
+    }
+  }
+  const off = rows * cols;
+  for (let i = 0; i < nz; i++) {
+    for (let j = 0; j < nx; j++) {
+      const a = i * cols + j, b = a + 1, c = a + cols, d = c + 1;
+      idx.push(a, c, b, b, c, d, off + a, off + b, off + c, off + b, off + d, off + c);
+    }
+    for (const j of [0, nx]) {                     // Kanten (Rails)
+      const t0 = i * cols + j, t1 = t0 + cols;
+      idx.push(t0, off + t0, t1, t1, off + t0, off + t1);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  return geo;
+}
+function buildTwintip(boardDef, footColor) {
+  const g = new THREE.Group();
+  g.position.y = 0.12;
+  g.add(new THREE.Mesh(buildTwintipGeometry(boardDef.c1, boardDef.c2), new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradTex, side: THREE.DoubleSide })));
+  for (const sz of [-1, 1]) {
+    const z = sz * (BOARD_L / 2 - 0.3), y = boardY(sz * 0.8) - 0.15;
+    for (const sx of [-1, 1]) { const f = new THREE.Mesh(finGeo, toon(0x1a1a2e)); f.position.set(sx * BOARD_W * 0.3, y, z); g.add(f); }
+    const zs = sz * BOARD_L * 0.2, ys = boardY(sz * 0.4) + 0.06;
+    g.add(ball(0x2b3a55, 0.32, 0, ys, zs, 1.25, 0.22, 1.0));                // Pad
+    const strap = new THREE.Mesh(strapGeo, toon(boardDef.c2 === 0xffffff ? 0x2b3a55 : boardDef.c2));
+    strap.position.set(0, ys + 0.05, zs); g.add(strap);                      // Fußschlaufe
+    g.add(ball(footColor, 0.3, 0, ys + 0.22, zs, 1.35, 0.6, 0.95));            // Fuß
+  }
+  const handle = new THREE.Mesh(strapGeo, toon(0x1a1a2e));
+  handle.scale.setScalar(0.45); handle.position.set(0, 0.12, 0); g.add(handle);
+  return g;
+}
+
 function eyes(parent, x, y, z, r = 0.2) {
   for (const s of [-1, 1]) {
     parent.add(ball(0xffffff, r, s * x, y, z));
@@ -581,18 +639,17 @@ function eyes(parent, x, y, z, r = 0.2) {
   }
 }
 
-function buildRiderMesh(def) {
+function buildRiderMesh(def, kiteDef, boardDef) {
   const root = new THREE.Group();
   const tg = new THREE.Group();                // Trick-/Sturz-Rotation
   root.add(tg);
+  const c = def.color, b = def.belly;
   const board = new THREE.Group();
-  board.add(ball(def.board, 1, 0, 0.15, 0, 0.8, 0.14, 2.2));
-  board.add(ball(0xffffff, 1, 0, 0.2, 0, 0.35, 0.1, 1.6));
+  board.add(buildTwintip(boardDef, c));
   tg.add(board);
   const body = new THREE.Group();
+  body.rotation.y = -0.35;                     // leicht seitlich auf dem Brett, wie beim Kiten
   tg.add(body);
-  const c = def.color, b = def.belly;
-  body.add(ball(c, 0.32, -0.45, 0.42, 0.1, 1, 0.7, 1.3), ball(c, 0.32, 0.45, 0.42, 0.1, 1, 0.7, 1.3));
   body.add(ball(c, 0.85, 0, 1.25, 0, 1, 1.1, 0.9));
   body.add(ball(b, 0.62, 0, 1.15, 0.36, 1, 1.15, 0.6));
   const head = new THREE.Group();
@@ -686,19 +743,32 @@ function buildRiderMesh(def) {
   root.add(shield);
 
   const kite = new THREE.Group();
-  const canopy = new THREE.Mesh(buildKiteGeometry(def.kite, def.kite2), new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradTex, side: THREE.DoubleSide }));
+  const sh = kiteDef.shape;
+  const canopy = new THREE.Mesh(buildKiteGeometry(kiteDef.c1, kiteDef.c2, sh), new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradTex, side: THREE.DoubleSide }));
   kite.add(canopy);
-  return { root, tg, board, body, head, shield, kite };
+  // Leinen-Ansatzpunkte an den Kite-Spitzen
+  const tipX = Math.sin(sh.A) * sh.R * 0.98, tipY = Math.cos(sh.A) * sh.R - sh.R;
+  return { root, tg, board, body, head, shield, kite, tipX, tipY };
 }
 
 // ===================================================================
 // Fahrer
 // ===================================================================
+// Fahrerwerte + Ausrüstung: (Wert − 3) × 0,5 von Kite und Board
+function combineStats(def, kite, board) {
+  const out = {};
+  for (const k of Object.keys(STAT_LABELS)) {
+    out[k] = clamp(def.stats[k] + (kite.stats[k] - 3) * GEAR_EFFECT + (board.stats[k] - 3) * GEAR_EFFECT, 0.5, 6.5);
+  }
+  return out;
+}
+
 class Rider {
-  constructor(def, isPlayer) {
+  constructor(def, isPlayer, kite, board) {
     this.def = def;
     this.isPlayer = isPlayer;
-    const s = def.stats;
+    this.kite = kite; this.board = board;
+    const s = this.stats = combineStats(def, kite, board);
     this.maxSpeed = 27 + s.speed * 2.4;
     this.accel = 10 + s.skill * 2.5;
     this.turnRate = 1.25 + s.agility * 0.27;
@@ -708,7 +778,7 @@ class Rider {
     this.trickDur = 0.95 - s.trick * 0.11;
     this.trickBoost = 0.45 + s.trick * 0.12;
     this.stunMul = 1.15 - s.skill * 0.07;
-    this.mesh = buildRiderMesh(def);
+    this.mesh = buildRiderMesh(def, kite, board);
     world.add(this.mesh.root, this.mesh.kite);
     this.ai = {
       lane: 0, laneTarget: 0, laneTimer: 0, avoid: 0,
@@ -743,9 +813,11 @@ let projectiles = [];
 let state = 'menu';          // menu | countdown | race | finished | paused | results
 let raceTime = 0, countdown = 0, finishTimer = 0, timeUp = false;
 let trackDef = TRACKS[0];
-let selChar = 0, selTrack = 0;
+let selChar = 0, selTrack = 0, selKite = 0, selBoard = 0;
 try { selChar = +localStorage.getItem('kk_char') || 0; selTrack = +localStorage.getItem('kk_track') || 0; } catch (e) { /* kein Speicher */ }
+try { selKite = +localStorage.getItem('kk_kite') || 0; selBoard = +localStorage.getItem('kk_board') || 0; } catch (e) { /* kein Speicher */ }
 selChar = clamp(selChar, 0, CHARACTERS.length - 1); selTrack = clamp(selTrack, 0, TRACKS.length - 1);
+selKite = clamp(selKite, 0, KITES.length - 1); selBoard = clamp(selBoard, 0, BOARDS.length - 1);
 
 function setupRace(def, playerChar, field) {
   trackDef = def;
@@ -758,9 +830,16 @@ function setupRace(def, playerChar, field) {
   const order = others.slice();
   if (playerChar >= 0) order.splice(Math.min(4, Math.floor(order.length / 2)), 0, CHARACTERS[playerChar]);
   else order.push(others[0] === CHARACTERS[0] ? CHARACTERS[1] : CHARACTERS[0]);
+  // Ausrüstung: Spieler nimmt seine Wahl, die anderen bekommen zufällig die übrigen Modelle
+  const shuffle = (a) => a.slice().sort(() => Math.random() - 0.5);
+  const kitePool = shuffle(KITES.filter((k) => playerChar < 0 || k !== KITES[selKite]));
+  const boardPool = shuffle(BOARDS.filter((b) => playerChar < 0 || b !== BOARDS[selBoard]));
   // Startaufstellung: zwei Reihen à vier Fahrer hinter der Startlinie
   order.slice(0, 8).forEach((def, i) => {
-    const r = new Rider(def, playerChar >= 0 && def === CHARACTERS[playerChar]);
+    const isP = playerChar >= 0 && def === CHARACTERS[playerChar];
+    const kite = isP ? KITES[selKite] : kitePool.pop() || KITES[i % KITES.length];
+    const board = isP ? BOARDS[selBoard] : boardPool.pop() || BOARDS[i % BOARDS.length];
+    const r = new Rider(def, isP, kite, board);
     r.idx = START_IDX - 4 - Math.floor(i / 4) * 7;
     const p = trackPoint(r.idx, ((i % 4) - 1.5) * 12);
     r.x = p.x; r.z = p.z; r.h = p.h;
@@ -932,7 +1011,7 @@ function aiControl(r, dt) {
   }
   if (best) {
     if (!ai.want.has(best)) {
-      const s = r.def.stats;
+      const s = r.stats;
       ai.want.set(best, Math.random() < (ramps.includes(best) ? 0.2 + s.trick * 0.1 : gates.includes(best) ? 0.45 + s.skill * 0.08 : 0.5));
     }
     if (ai.want.get(best)) laneLat = best.lat;
@@ -975,7 +1054,7 @@ function aiControl(r, dt) {
     }
   } else if (r.trickT <= 0) {
     const tLand = (r.vy + Math.sqrt(r.vy * r.vy + 2 * GRAV * r.y)) / GRAV;
-    const margin = 0.1 - Math.random() * 0.2 * (1 - r.def.stats.skill / 6);   // ungeschickte Fahrer verschätzen sich öfter
+    const margin = 0.1 - Math.random() * 0.2 * (1 - r.stats.skill / 6);   // ungeschickte Fahrer verschätzen sich öfter
     if (tLand > r.trickDur + margin && Math.random() < ai.trickAgg * dt * 6) jump = true;
   }
 
@@ -1195,7 +1274,7 @@ function physics(r, c, dt) {
   r.h = wrapAngle(r.h - c.steer * turn * dt);
   if (air) {
     const s = Math.abs(c.steer) < 0.3 ? 0 : Math.sign(c.steer) * (Math.abs(c.steer) - 0.3) / 0.7;
-    r.spin -= s * SPIN_RATE * (0.8 + r.def.stats.trick * 0.08) * dt;
+    r.spin -= s * SPIN_RATE * (0.8 + r.stats.trick * 0.08) * dt;
     const turns = Math.floor(Math.abs(r.spin) / TAU + 0.15);   // zählt kurz vor Vollendung
     if (turns > r.spins) {
       r.spins = turns;
@@ -1545,7 +1624,7 @@ function updateRiderVisual(r, dt, li) {
   const arr = kiteLines.geometry.attributes.position.array;
   for (let s = 0; s < 2; s++) {
     const side = s ? 1 : -1;
-    tmpV.set(side * 3.25, -2.1, 0); m.kite.localToWorld(tmpV);
+    tmpV.set(side * m.tipX, m.tipY, 0); m.kite.localToWorld(tmpV);
     const o = (li * 4 + s * 2) * 3;
     arr[o] = tmpV.x; arr[o + 1] = tmpV.y; arr[o + 2] = tmpV.z;
     arr[o + 3] = r.x + fx * 1 - rx * side * 0.6; arr[o + 4] = hy; arr[o + 5] = r.z + fz * 1 - rz * side * 0.6;
@@ -1680,7 +1759,7 @@ function drawMinimap() {
   for (const r of riders) {
     if (r.isPlayer) continue;
     const [x, z] = mmT(r.x, r.z);
-    mmCtx.fillStyle = '#' + new THREE.Color(r.def.kite).getHexString();
+    mmCtx.fillStyle = '#' + new THREE.Color(r.kite.c1).getHexString();
     mmCtx.beginPath(); mmCtx.arc(x, z, 4, 0, TAU); mmCtx.fill();
   }
   if (player) {
@@ -1801,7 +1880,7 @@ function frame(now) {
     simulate(dt);
   }
   if (state === 'menu') updateMenuCam(dt);
-  else if (player && state !== 'paused') updateChaseCam(player, dt);
+  else if (player && state !== 'paused' && !debug.freeCam) updateChaseCam(player, dt);
   if (state !== 'menu') { updateHud(dt); if (state !== 'paused') drawMinimap(); }
   renderer.render(scene, camera);
 }
@@ -1809,7 +1888,7 @@ let lastCount = 0, startPress = null;
 function startBoosts(held) {
   for (const r of riders) {
     if (r.isPlayer) continue;
-    if (Math.random() < 0.25 + r.def.stats.skill * 0.1) r.boost = 1.6;
+    if (Math.random() < 0.25 + r.stats.skill * 0.1) r.boost = 1.6;
   }
   if (!player) return;
   if (held && startPress !== null && startPress <= 1.0) {
@@ -1824,7 +1903,7 @@ function startBoosts(held) {
 // ===================================================================
 // Menüs
 // ===================================================================
-const screens = ['menu-title', 'menu-help', 'menu-chars', 'menu-tracks', 'menu-pause', 'menu-results'];
+const screens = ['menu-title', 'menu-help', 'menu-chars', 'menu-kites', 'menu-boards', 'menu-tracks', 'menu-pause', 'menu-results'];
 function show(id) {
   screens.forEach((s) => $(s).classList.toggle('hidden', s !== id));
 }
@@ -1853,6 +1932,41 @@ function buildCharGrid() {
     grid.appendChild(el);
   });
 }
+// Auswahl für Kites und Boards (gleiche Karten wie bei den Fahrern)
+const statPips = (stats) => Object.keys(STAT_LABELS).map((k) =>
+  `<div class="stat"><label>${STAT_LABELS[k]}</label><div class="pips">${[1, 2, 3, 4, 5].map((n) => `<i class="pip${n <= stats[k] ? ' on' : ''}"></i>`).join('')}</div></div>`).join('');
+const hex = (c) => '#' + new THREE.Color(c).getHexString();
+function gearTotal(el) {
+  const ch = CHARACTERS[selChar], tot = combineStats(ch, KITES[selKite], BOARDS[selBoard]);
+  const parts = Object.keys(STAT_LABELS).map((k) => {
+    const d = tot[k] - ch.stats[k], cls = d > 0 ? 'up' : d < 0 ? 'down' : '';
+    return `${STAT_LABELS[k]} <b>${String(tot[k]).replace('.', ',')}</b>${d ? ` <span class="${cls}">(${d > 0 ? '+' : ''}${String(d).replace('.', ',')})</span>` : ''}`;
+  });
+  el.innerHTML = `<b>${ch.name}</b> mit ${KITES[selKite].model} + ${BOARDS[selBoard].model}: ` + parts.join(' · ');
+}
+function buildGearGrid(kind) {
+  const list = kind === 'kite' ? KITES : BOARDS;
+  const grid = $(kind + '-grid'), total = $(kind + '-total');
+  grid.innerHTML = '';
+  list.forEach((g, i) => {
+    const el = document.createElement('button');
+    const sel = kind === 'kite' ? selKite : selBoard;
+    el.className = 'char-card' + (i === sel ? ' selected' : '');
+    el.innerHTML = `<div class="char-head"><div class="char-face" style="background:linear-gradient(135deg, ${hex(g.c1)} 55%, ${hex(g.c2)} 55%)">${kind === 'kite' ? '🪁' : '🏄'}</div>
+      <div><div class="char-name">${g.model}</div><div class="char-type">${g.brand} · ${g.category}</div></div></div>${statPips(g.stats)}
+      <div class="char-type">${g.desc}</div>`;
+    el.addEventListener('click', () => {
+      if (kind === 'kite') selKite = i; else selBoard = i;
+      try { localStorage.setItem('kk_' + kind, i); } catch (e) { /* egal */ }
+      grid.querySelectorAll('.char-card').forEach((n, k) => n.classList.toggle('selected', k === i));
+      gearTotal(total);
+      beep(560 + i * 40, 0.08, 'triangle');
+    });
+    grid.appendChild(el);
+  });
+  gearTotal(total);
+}
+
 function buildTrackGrid() {
   const grid = $('track-grid');
   grid.innerHTML = '';
@@ -1999,7 +2113,9 @@ function showResults() {
 
 $('btn-start').addEventListener('click', () => { goFullscreen(); buildCharGrid(); show('menu-chars'); beep(660, 0.1, 'triangle'); });
 $('btn-help').addEventListener('click', () => show('menu-help'));
-$('btn-chars-next').addEventListener('click', () => { buildTrackGrid(); show('menu-tracks'); });
+$('btn-chars-next').addEventListener('click', () => { buildGearGrid('kite'); show('menu-kites'); });
+$('btn-kites-next').addEventListener('click', () => { buildGearGrid('board'); show('menu-boards'); });
+$('btn-boards-next').addEventListener('click', () => { buildTrackGrid(); show('menu-tracks'); });
 $('btn-race').addEventListener('click', () => { goFullscreen(); cup = null; startRace(); });
 $('btn-cup').addEventListener('click', () => { goFullscreen(); startCup(); });
 $('btn-resume').addEventListener('click', () => { calibrateTilt(); togglePause(); });
@@ -2009,13 +2125,13 @@ $('btn-res-again').addEventListener('click', () => (resultAction === 'cup' ? sta
 $('btn-res-menu').addEventListener('click', () => { cup = null; startMenuDemo(); show('menu-title'); });
 
 // Debug-/Testzugriff
-const debug = { autopilot: false };
+const debug = { autopilot: false, freeCam: false };
 window.KiteKart = {
   debug,
   fastForward(sec) { if (state === 'countdown') state = 'race'; for (let t = 0; t < sec && (state === 'race' || state === 'finished'); t += 1 / 30) simulate(1 / 30); },
   get raceTime() { return raceTime; },
   get state() { return state; }, get riders() { return riders; }, get player() { return player; }, get path() { return path; }, startRace, startCup,
-  get cup() { return cup; }, tilt, get features() { return { ramps, gates, rocks, gusts, shortcuts }; }, showResults, selectChar: (i) => { selChar = i; }, selectTrack: (i) => { selTrack = i; } };
+  get cup() { return cup; }, tilt, camera, get features() { return { ramps, gates, rocks, gusts, shortcuts }; }, showResults, selectChar: (i) => { selChar = i; }, selectTrack: (i) => { selTrack = i; } };
 
 try { if (isTouch && localStorage.getItem('kk_tilt') === '1' && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') enableTilt(); } catch (e) { /* egal */ }
 startMenuDemo();
