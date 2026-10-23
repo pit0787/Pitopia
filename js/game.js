@@ -2067,26 +2067,18 @@ function showWindReport() {
   $('wr-ideal').textContent = lo === hi ? `${lo} m²` : `${lo}–${hi} m²`;
   const row = $('size-row');
   row.innerHTML = '';
-  const effectText = () => {
-    const fx = sizeEffect(selSize / ideal), pct = (v) => Math.round((v - 1) * 100);
-    $('size-effect').innerHTML = fx.label === 'ok' ? '<span class="good">Passt perfekt – volle Kontrolle.</span>'
-      : fx.label === 'small' ? `<span class="bad">Zu klein: ${pct(fx.speed)} % Tempo, weniger Sprunghöhe.</span>`
-      : `<span class="bad">Zu groß: +${pct(fx.speed)} % Tempo, aber ${pct(fx.turn)} % Lenkung.</span>`;
-  };
   for (const s of KITE_SIZES) {
     const btn = document.createElement('button');
-    btn.className = 'size-chip ' + sizeEffect(s / ideal).label + (s === selSize ? ' selected' : '');
+    btn.className = 'size-chip' + (s === selSize ? ' selected' : '');
     btn.textContent = s + ' m²';
     btn.addEventListener('click', () => {
       selSize = s;
       try { localStorage.setItem('kk_size', s); } catch (e) { /* egal */ }
       row.querySelectorAll('.size-chip').forEach((n) => n.classList.toggle('selected', n === btn));
-      effectText();
       beep(400 + s * 30, 0.08, 'triangle');
     });
     row.appendChild(btn);
   }
-  effectText();
   show('menu-wind');
 }
 
