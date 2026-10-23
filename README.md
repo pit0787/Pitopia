@@ -1,4 +1,4 @@
-# Kite Kart 🪁
+# Kitekids 🪁
 
 Ein Kitesurf-Rennspiel im Stil von Mario Kart – auf dem offenen Meer, für Handy und Browser.
 
@@ -37,7 +37,7 @@ Am besten das Handy **quer** halten.
 Sobald das Handy quer gehalten wird, wechselt das Spiel in den Vollbildmodus (Android/Chrome:
 direkt beim Drehen oder spätestens beim nächsten Antippen – Browser erlauben Vollbild nur nach
 einer Berührung). Auf dem iPhone gibt es im Browser kein Vollbild für Webseiten: Dort über
-Teilen → „Zum Home-Bildschirm“ hinzufügen und Kite Kart vom Home-Bildschirm starten – dann läuft
+Teilen → „Zum Home-Bildschirm“ hinzufügen und Kitekids vom Home-Bildschirm starten – dann läuft
 es ohne Browserleisten.
 
 ## Neigungssteuerung

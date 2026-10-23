@@ -1,6 +1,6 @@
 {
-  "name": "Kite Kart",
-  "short_name": "Kite Kart",
+  "name": "Kitekids",
+  "short_name": "Kitekids",
   "description": "Kitesurf-Rennspiel im Mario-Kart-Stil",
   "start_url": "./",
   "scope": "./",
