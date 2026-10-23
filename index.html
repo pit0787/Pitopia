@@ -31,7 +31,7 @@
       <div id="power-label">Kraft</div>
       <div id="power-bar"><div id="power-fill"></div><span id="power-val">100</span></div>
     </div>
-    <div id="wind-box"><span id="wind-arrow">➜</span><span>Wind</span></div>
+    <div id="wind-box"><span id="wind-arrow">➜</span><span id="wind-info">Wind</span></div>
     <div id="draft-box"><span>Windschatten</span><div id="draft-bar"><div id="draft-fill"></div></div></div>
   </div>
   <div id="hud-right">
@@ -133,6 +133,28 @@
       <button class="menu-btn" data-back="menu-boards">Zurück</button>
       <button class="menu-btn" id="btn-cup">🏆 K.-o.-Cup</button>
       <button class="menu-btn primary" id="btn-race">Rennen starten</button>
+    </div>
+  </div>
+</div>
+
+<div id="menu-wind" class="screen hidden">
+  <div class="panel wide">
+    <h2 id="wind-title">Windbericht</h2>
+    <div class="wind-report">
+      <div class="wind-gauge">
+        <div class="wind-kn"><span id="wr-kn">15</span><small>Knoten</small></div>
+        <div class="wind-bft" id="wr-bft">4 Bft · mäßige Brise</div>
+      </div>
+      <div class="wind-advice">
+        <div>Empfohlene Kitegröße <small>(Fahrer ca. 75 kg)</small></div>
+        <div class="wind-ideal" id="wr-ideal">11 m²</div>
+      </div>
+    </div>
+    <div class="size-row" id="size-row"></div>
+    <div class="size-effect" id="size-effect"></div>
+    <div class="row">
+      <button class="menu-btn primary" id="btn-wind-go">Rennen starten</button>
+      <button class="menu-btn" id="btn-wind-back">Zurück</button>
     </div>
   </div>
 </div>

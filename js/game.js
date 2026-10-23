@@ -763,11 +763,22 @@ function combineStats(def, kite, board) {
   return out;
 }
 
+// Wirkung der Kitegröße: q = gewählte / ideale Größe.
+// ±10 % = optimal. Zu klein = deutlich langsamer (und weniger Sprunghöhe),
+// zu groß = schneller, aber man kann schlechter lenken.
+function sizeEffect(q) {
+  if (q < 0.9) return { speed: Math.max(0.5, 1 - 1.4 * (0.9 - q)), turn: 1, jump: Math.max(0.7, 1 - (0.9 - q)), label: 'small' };
+  if (q > 1.1) return { speed: 1 + Math.min(0.25, 0.5 * (q - 1.1)), turn: Math.max(0.45, 1 - 1.3 * (q - 1.1)), jump: 1, label: 'big' };
+  return { speed: 1, turn: 1, jump: 1, label: 'ok' };
+}
+const nearestSize = (m2) => KITE_SIZES.reduce((a, b) => (Math.abs(b - m2) < Math.abs(a - m2) ? b : a));
+
 class Rider {
   constructor(def, isPlayer, kite, board) {
     this.def = def;
     this.isPlayer = isPlayer;
     this.kite = kite; this.board = board;
+    this.kiteSize = 10; this.sizeFx = { speed: 1, turn: 1, jump: 1, label: 'ok' };
     const s = this.stats = combineStats(def, kite, board);
     this.maxSpeed = 27 + s.speed * 2.4;
     this.accel = 10 + s.skill * 2.5;
@@ -813,11 +824,13 @@ let projectiles = [];
 let state = 'menu';          // menu | countdown | race | finished | paused | results
 let raceTime = 0, countdown = 0, finishTimer = 0, timeUp = false;
 let trackDef = TRACKS[0];
-let selChar = 0, selTrack = 0, selKite = 0, selBoard = 0;
+let selChar = 0, selTrack = 0, selKite = 0, selBoard = 0, selSize = 10;
+let windKn = 16;            // Windstärke des aktuellen Rennens in Knoten
 try { selChar = +localStorage.getItem('kk_char') || 0; selTrack = +localStorage.getItem('kk_track') || 0; } catch (e) { /* kein Speicher */ }
 try { selKite = +localStorage.getItem('kk_kite') || 0; selBoard = +localStorage.getItem('kk_board') || 0; } catch (e) { /* kein Speicher */ }
 selChar = clamp(selChar, 0, CHARACTERS.length - 1); selTrack = clamp(selTrack, 0, TRACKS.length - 1);
 selKite = clamp(selKite, 0, KITES.length - 1); selBoard = clamp(selBoard, 0, BOARDS.length - 1);
+try { const v = +localStorage.getItem('kk_size'); if (KITE_SIZES.includes(v)) selSize = v; } catch (e) { /* kein Speicher */ }
 
 function setupRace(def, playerChar, field) {
   trackDef = def;
@@ -838,8 +851,16 @@ function setupRace(def, playerChar, field) {
   order.slice(0, 8).forEach((def, i) => {
     const isP = playerChar >= 0 && def === CHARACTERS[playerChar];
     const kite = isP ? KITES[selKite] : kitePool.pop() || KITES[i % KITES.length];
+    // Kitegröße: Spieler nach Wahl, Gegner meist passend (manche greifen eine Größe daneben)
+    const ideal = idealKiteSize(windKn);
+    let size = nearestSize(ideal);
+    if (!isP && Math.random() < 0.3) size = KITE_SIZES[clamp(KITE_SIZES.indexOf(size) + (Math.random() < 0.5 ? -1 : 1), 0, KITE_SIZES.length - 1)];
+    if (isP) size = selSize;
     const board = isP ? BOARDS[selBoard] : boardPool.pop() || BOARDS[i % BOARDS.length];
     const r = new Rider(def, isP, kite, board);
+    r.kiteSize = size; r.sizeFx = sizeEffect(size / ideal);
+    r.jumpV *= Math.sqrt(r.sizeFx.jump);
+    r.mesh.kite.scale.setScalar(0.7 + size / 30);   // größere Kites sehen auch größer aus
     r.idx = START_IDX - 4 - Math.floor(i / 4) * 7;
     const p = trackPoint(r.idx, ((i % 4) - 1.5) * 12);
     r.x = p.x; r.z = p.z; r.h = p.h;
@@ -1270,7 +1291,7 @@ function physics(r, c, dt) {
   }
 
   // Lenken – in der Luft dreht man sich stattdessen um die eigene Achse
-  const turn = r.turnRate * (air ? 0.25 : 1) * (edging ? 1.1 : 1) * clamp(r.speed / 8, 0.3, 1) * (r.slow > 0 ? 0.8 : 1);
+  const turn = r.turnRate * r.sizeFx.turn * (air ? 0.25 : 1) * (edging ? 1.1 : 1) * clamp(r.speed / 8, 0.3, 1) * (r.slow > 0 ? 0.8 : 1);
   r.h = wrapAngle(r.h - c.steer * turn * dt);
   if (air) {
     const s = Math.abs(c.steer) < 0.3 ? 0 : Math.sign(c.steer) * (Math.abs(c.steer) - 0.3) / 0.7;
@@ -1291,7 +1312,7 @@ function physics(r, c, dt) {
   if (r.offTrack && !air) maxS *= r.offFactor;
   if (r.sc && !r.scOpen && !air) maxS *= 0.45;   // Abkürzung gesperrt = Sandbank
   if (r.finished) maxS = Math.min(maxS, 8);   // nach dem Ziel ausrollen
-  maxS *= windFactor(r.fx, r.fz);
+  maxS *= windFactor(r.fx, r.fz) * r.sizeFx.speed;
   if (r.speed < maxS) r.speed = Math.min(maxS, r.speed + (r.boost > 0 ? 45 : r.accel * (edging ? 1.4 : 1)) * dt);
   else r.speed = Math.max(maxS, r.speed - (air ? 3 : 20) * dt);
   r.x += r.fx * r.speed * dt;
@@ -1683,7 +1704,7 @@ function updateMenuCam(dt) {
 const hud = {
   pos: $('pos-num'), lap: $('lap-num'), timer: $('timer'),
   power: $('power-fill'), powerVal: $('power-val'), itemBtn: $('item-btn'), itemIcon: $('item-icon'),
-  msg: $('message'), jump: $('btn-jump'), edge: $('btn-edge'), wind: $('wind-arrow'),
+  msg: $('message'), jump: $('btn-jump'), edge: $('btn-edge'), wind: $('wind-arrow'), windInfo: $('wind-info'),
   draft: $('draft-fill'), draftBox: $('draft-box'), round: $('round-box'), hc: $('hc-box'),
 };
 let msgTimer = 0;
@@ -1713,6 +1734,7 @@ function updateHud(dt) {
   const cf = Math.sin(camH) * wind.x + Math.cos(camH) * wind.z;
   const cr = -Math.cos(camH) * wind.x + Math.sin(camH) * wind.z;
   setHud('wind', hud.wind.style, `rotate(${Math.round(Math.atan2(cr, cf) * 180 / Math.PI - 90)}deg)`, 'transform');
+  setHud('windInfo', hud.windInfo, `${Math.round(windKn * (1 + (wind.gust - 1) * 0.5))} kn · ${player.kiteSize} m²`);
   const df = Math.round(player.draft / DRAFT_TIME * 20) * 5;
   setHud('draft', hud.draft.style, df + '%', 'width');
   setHud('draftOn', hud.draftBox, df > 0 ? 'on' : '', 'className');
@@ -1899,7 +1921,7 @@ function startBoosts(held) {
 // ===================================================================
 // Menüs
 // ===================================================================
-const screens = ['menu-title', 'menu-help', 'menu-chars', 'menu-kites', 'menu-boards', 'menu-tracks', 'menu-pause', 'menu-results'];
+const screens = ['menu-title', 'menu-help', 'menu-chars', 'menu-kites', 'menu-boards', 'menu-tracks', 'menu-wind', 'menu-pause', 'menu-results'];
 function show(id) {
   screens.forEach((s) => $(s).classList.toggle('hidden', s !== id));
 }
@@ -2029,7 +2051,43 @@ function goFullscreen() {
 let cup = null, resultAction = 'again';
 function startCup() {
   cup = { round: 0, field: CHARACTERS.map((c, i) => i) };
-  startRace();
+  showWindReport();
+}
+
+// Windbericht vor dem Rennen: Windstärke würfeln, Kitegröße wählen lassen
+function showWindReport() {
+  const round = cup && CUP_ROUNDS[cup.round];
+  const def = TRACKS[round ? round.track : selTrack];
+  windKn = Math.round(def.knots[0] + Math.random() * (def.knots[1] - def.knots[0]));
+  const ideal = idealKiteSize(windKn), b = beaufort(windKn);
+  $('wind-title').textContent = `Windbericht · ${def.name}` + (round ? ` · ${round.name}` : '');
+  $('wr-kn').textContent = windKn;
+  $('wr-bft').textContent = `${b.bft} Bft · ${b.name}`;
+  const lo = nearestSize(ideal * 0.92), hi = nearestSize(ideal * 1.08);
+  $('wr-ideal').textContent = lo === hi ? `${lo} m²` : `${lo}–${hi} m²`;
+  const row = $('size-row');
+  row.innerHTML = '';
+  const effectText = () => {
+    const fx = sizeEffect(selSize / ideal), pct = (v) => Math.round((v - 1) * 100);
+    $('size-effect').innerHTML = fx.label === 'ok' ? '<span class="good">Passt perfekt – volle Kontrolle.</span>'
+      : fx.label === 'small' ? `<span class="bad">Zu klein: ${pct(fx.speed)} % Tempo, weniger Sprunghöhe.</span>`
+      : `<span class="bad">Zu groß: +${pct(fx.speed)} % Tempo, aber ${pct(fx.turn)} % Lenkung.</span>`;
+  };
+  for (const s of KITE_SIZES) {
+    const btn = document.createElement('button');
+    btn.className = 'size-chip ' + sizeEffect(s / ideal).label + (s === selSize ? ' selected' : '');
+    btn.textContent = s + ' m²';
+    btn.addEventListener('click', () => {
+      selSize = s;
+      try { localStorage.setItem('kk_size', s); } catch (e) { /* egal */ }
+      row.querySelectorAll('.size-chip').forEach((n) => n.classList.toggle('selected', n === btn));
+      effectText();
+      beep(400 + s * 30, 0.08, 'triangle');
+    });
+    row.appendChild(btn);
+  }
+  effectText();
+  show('menu-wind');
 }
 
 function startRace() {
@@ -2102,12 +2160,14 @@ $('btn-help').addEventListener('click', () => show('menu-help'));
 $('btn-chars-next').addEventListener('click', () => { buildGearGrid('kite'); show('menu-kites'); });
 $('btn-kites-next').addEventListener('click', () => { buildGearGrid('board'); show('menu-boards'); });
 $('btn-boards-next').addEventListener('click', () => { buildTrackGrid(); show('menu-tracks'); });
-$('btn-race').addEventListener('click', () => { goFullscreen(); cup = null; startRace(); });
+$('btn-race').addEventListener('click', () => { goFullscreen(); cup = null; showWindReport(); });
+$('btn-wind-go').addEventListener('click', () => { goFullscreen(); startRace(); });
+$('btn-wind-back').addEventListener('click', () => { if (cup) { cup = null; } buildTrackGrid(); show('menu-tracks'); });
 $('btn-cup').addEventListener('click', () => { goFullscreen(); startCup(); });
 $('btn-resume').addEventListener('click', () => { calibrateTilt(); togglePause(); });
 $('btn-restart').addEventListener('click', () => startRace());
 $('btn-quit').addEventListener('click', () => { cup = null; startMenuDemo(); show('menu-title'); });
-$('btn-res-again').addEventListener('click', () => (resultAction === 'cup' ? startCup() : startRace()));
+$('btn-res-again').addEventListener('click', () => (resultAction === 'cup' ? startCup() : showWindReport()));
 $('btn-res-menu').addEventListener('click', () => { cup = null; startMenuDemo(); show('menu-title'); });
 
 // Debug-/Testzugriff
