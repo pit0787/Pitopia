@@ -103,12 +103,36 @@
   </div>
 </div>
 
+<div id="menu-kites" class="screen hidden">
+  <div class="panel wide">
+    <h2>Wähle deinen Kite</h2>
+    <div id="kite-grid" class="gear-grid"></div>
+    <div class="gear-total" id="kite-total"></div>
+    <div class="row">
+      <button class="menu-btn" data-back="menu-chars">Zurück</button>
+      <button class="menu-btn primary" id="btn-kites-next">Weiter</button>
+    </div>
+  </div>
+</div>
+
+<div id="menu-boards" class="screen hidden">
+  <div class="panel wide">
+    <h2>Wähle dein Board</h2>
+    <div id="board-grid" class="gear-grid"></div>
+    <div class="gear-total" id="board-total"></div>
+    <div class="row">
+      <button class="menu-btn" data-back="menu-kites">Zurück</button>
+      <button class="menu-btn primary" id="btn-boards-next">Weiter</button>
+    </div>
+  </div>
+</div>
+
 <div id="menu-tracks" class="screen hidden">
   <div class="panel wide">
     <h2>Wähle die Strecke</h2>
     <div id="track-grid"></div>
     <div class="row">
-      <button class="menu-btn" data-back="menu-chars">Zurück</button>
+      <button class="menu-btn" data-back="menu-boards">Zurück</button>
       <button class="menu-btn" id="btn-cup">🏆 K.-o.-Cup</button>
       <button class="menu-btn primary" id="btn-race">Rennen starten</button>
     </div>

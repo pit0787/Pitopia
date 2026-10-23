@@ -85,3 +85,67 @@ const CUP_ROUNDS = [
 ];
 
 const RACE_TIME_LIMIT = 180; // Sekunden
+
+// ===================================================================
+// Ausrüstung: echte Kite- und Twintip-Modelle (Stand der Recherche 2025/26).
+// Die Werte 1–5 sind eine spielerische Einordnung nach dem Einsatzbereich, den die
+// Hersteller bzw. Händler angeben (Big Air, Freeride, Freestyle, Welle) – keine Messwerte.
+// Jeder Gegenstand hat wie die Fahrer 15 Punkte. Wirkung im Spiel: (Wert − 3) × 0,5
+// wird auf den Wert des Fahrers addiert, also −1 bis +1 pro Eigenschaft.
+// shape: Kite-Form fürs 3D-Modell (A = Spannweite, chord = Profiltiefe, R = Bogenradius)
+// ===================================================================
+const GEAR_EFFECT = 0.5;
+
+const KITES = [
+  { id: 'rebel', brand: 'Duotone', model: 'Rebel', category: 'Big Air / Freeride',
+    desc: 'Viel Lift und Hangtime', c1: 0xff4f4f, c2: 0x2b3a55, shape: { A: 1.25, chord: 1.75, R: 3.8 },
+    stats: { speed: 3, agility: 2, skill: 3, jump: 5, trick: 2 } },
+  { id: 'evo', brand: 'Duotone', model: 'Evo', category: 'Allround',
+    desc: 'Kann alles ein bisschen', c1: 0x2bb5d8, c2: 0xffffff, shape: { A: 1.15, chord: 2.0, R: 3.6 },
+    stats: { speed: 3, agility: 3, skill: 4, jump: 3, trick: 2 } },
+  { id: 'dice', brand: 'Duotone', model: 'Dice', category: 'Freestyle / Welle',
+    desc: 'Dreht schnell, für Tricks', c1: 0xffd23f, c2: 0x8a3bff, shape: { A: 1.05, chord: 2.2, R: 3.2 },
+    stats: { speed: 3, agility: 4, skill: 2, jump: 2, trick: 4 } },
+  { id: 'orbit', brand: 'North', model: 'Orbit', category: 'Big Air',
+    desc: 'Für die ganz hohen Sprünge', c1: 0x1a1a2e, c2: 0xff9f1c, shape: { A: 1.3, chord: 1.7, R: 3.9 },
+    stats: { speed: 4, agility: 2, skill: 2, jump: 5, trick: 2 } },
+  { id: 'carve', brand: 'North', model: 'Carve', category: 'Welle',
+    desc: 'Wendig, verzeiht viel', c1: 0x6be37a, c2: 0x1b7fa3, shape: { A: 1.0, chord: 2.3, R: 3.3 },
+    stats: { speed: 2, agility: 5, skill: 4, jump: 1, trick: 3 } },
+  { id: 'switchblade', brand: 'Cabrinha', model: 'Switchblade', category: 'Freeride',
+    desc: 'Stabil und direkt', c1: 0xff7eb6, c2: 0x2b3a55, shape: { A: 1.2, chord: 1.9, R: 3.7 },
+    stats: { speed: 3, agility: 2, skill: 4, jump: 4, trick: 2 } },
+  { id: 'xr', brand: 'CORE', model: 'XR', category: 'Freeride / Hangtime',
+    desc: 'Leichter Neustart, sehr gutmütig', c1: 0xf4f6fa, c2: 0xff4f4f, shape: { A: 1.18, chord: 2.0, R: 3.6 },
+    stats: { speed: 2, agility: 3, skill: 5, jump: 3, trick: 2 } },
+  { id: 'vortex', brand: 'Ozone', model: 'Vortex', category: 'Big Air / Kiteloop',
+    desc: 'Schnell und aggressiv', c1: 0x3a4bd8, c2: 0x8ff0ff, shape: { A: 1.22, chord: 1.8, R: 3.6 },
+    stats: { speed: 4, agility: 3, skill: 1, jump: 4, trick: 3 } },
+];
+
+const BOARDS = [
+  { id: 'jaime', brand: 'Duotone', model: 'Jaime', category: 'Freestyle',
+    desc: 'Der Klassiker für Tricks', c1: 0x2b3a55, c2: 0xffd23f,
+    stats: { speed: 3, agility: 3, skill: 3, jump: 2, trick: 4 } },
+  { id: 'atmos', brand: 'North', model: 'Atmos', category: 'Big Air / Freeride',
+    desc: 'Harte Landungen? Kein Problem', c1: 0x1a1a2e, c2: 0xff9f1c,
+    stats: { speed: 3, agility: 2, skill: 3, jump: 5, trick: 2 } },
+  { id: 'astra', brand: 'North', model: 'Astra', category: 'Big Air (leicht)',
+    desc: 'Leicht und verspielt', c1: 0xff7eb6, c2: 0xffffff,
+    stats: { speed: 2, agility: 4, skill: 3, jump: 4, trick: 2 } },
+  { id: 'ace', brand: 'Cabrinha', model: 'Ace', category: 'Freeride / Freestyle',
+    desc: 'Allrounder für alles', c1: 0x2bb5d8, c2: 0x1a1a2e,
+    stats: { speed: 3, agility: 3, skill: 3, jump: 3, trick: 3 } },
+  { id: 'vapor', brand: 'Cabrinha', model: 'Vapor', category: 'Big Air / Freestyle',
+    desc: 'Steif, viel Pop', c1: 0xff4f4f, c2: 0xf4f6fa,
+    stats: { speed: 3, agility: 2, skill: 2, jump: 4, trick: 4 } },
+  { id: 'monarch', brand: 'Naish', model: 'Monarch', category: 'Big Air / Performance',
+    desc: 'Schnell und kantenstark', c1: 0xffd23f, c2: 0x2b3a55,
+    stats: { speed: 4, agility: 2, skill: 2, jump: 4, trick: 3 } },
+  { id: 'motion', brand: 'Naish', model: 'Motion', category: 'Freeride',
+    desc: 'Weich und komfortabel', c1: 0x6be37a, c2: 0x2b3a55,
+    stats: { speed: 3, agility: 3, skill: 5, jump: 2, trick: 2 } },
+  { id: 'fusion', brand: 'CORE', model: 'Fusion', category: 'Freeride / Speed',
+    desc: 'Läuft schnell geradeaus', c1: 0x8a3bff, c2: 0x8ff0ff,
+    stats: { speed: 5, agility: 2, skill: 3, jump: 3, trick: 2 } },
+];

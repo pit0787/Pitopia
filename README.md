@@ -82,6 +82,36 @@ Sensordaten – dafür das Spiel direkt im Handy-Browser öffnen (z. B. über Gi
 - **K.-o.-Cup:** Drei Rennen auf allen drei Strecken. Nach Vorrunde (8 Fahrer) und Halbfinale (6)
   scheiden jeweils die letzten zwei aus, im Finale fahren die besten vier um den Cup.
 
+## Ausrüstung
+
+Vor dem Rennen wählst du nach dem Fahrer einen **Kite** und ein **Twintip-Board**. Die Modelle gibt es
+wirklich; ihre Werte (1–5, wie bei den Fahrern) sind eine spielerische Einordnung nach dem
+Einsatzbereich, den Hersteller und Händler angeben – keine Messwerte. Jedes Teil verändert die Werte
+des Fahrers um (Wert − 3) × 0,5, also um −1 bis +1 pro Eigenschaft. Die Gegner bekommen die übrigen
+Modelle zufällig zugeteilt.
+
+| Kite | Einsatz | Schnell | Wendig | Geschick | Sprung | Trick |
+|---|---|---|---|---|---|---|
+| Duotone Rebel | Big Air / Freeride | 3 | 2 | 3 | 5 | 2 |
+| Duotone Evo | Allround | 3 | 3 | 4 | 3 | 2 |
+| Duotone Dice | Freestyle / Welle | 3 | 4 | 2 | 2 | 4 |
+| North Orbit | Big Air | 4 | 2 | 2 | 5 | 2 |
+| North Carve | Welle | 2 | 5 | 4 | 1 | 3 |
+| Cabrinha Switchblade | Freeride | 3 | 2 | 4 | 4 | 2 |
+| CORE XR | Freeride / Hangtime | 2 | 3 | 5 | 3 | 2 |
+| Ozone Vortex | Big Air / Kiteloop | 4 | 3 | 1 | 4 | 3 |
+
+| Board | Einsatz | Schnell | Wendig | Geschick | Sprung | Trick |
+|---|---|---|---|---|---|---|
+| Duotone Jaime | Freestyle | 3 | 3 | 3 | 2 | 4 |
+| North Atmos | Big Air / Freeride | 3 | 2 | 3 | 5 | 2 |
+| North Astra | Big Air (leicht) | 2 | 4 | 3 | 4 | 2 |
+| Cabrinha Ace | Freeride / Freestyle | 3 | 3 | 3 | 3 | 3 |
+| Cabrinha Vapor | Big Air / Freestyle | 3 | 2 | 2 | 4 | 4 |
+| Naish Monarch | Big Air / Performance | 4 | 2 | 2 | 4 | 3 |
+| Naish Motion | Freeride | 3 | 3 | 5 | 2 | 2 |
+| CORE Fusion | Freeride / Speed | 5 | 2 | 3 | 3 | 2 |
+
 ## Strecken
 
 | Strecke | Länge (Start → Ziel) | Charakter |
