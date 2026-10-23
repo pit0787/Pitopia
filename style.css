@@ -8,6 +8,17 @@ html, body {
 }
 #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
 .hidden { display: none !important; }
+/* Fließende Übergänge: Bildschirme und Karten gleiten weich herein */
+@keyframes popIn { from { opacity: 0; transform: translateY(18px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes msgPop { 0% { transform: translate(-50%, -50%) scale(.6); } 60% { transform: translate(-50%, -50%) scale(1.08); } 100% { transform: translate(-50%, -50%) scale(1); } }
+.screen:not(.hidden) { animation: fadeIn .25s ease-out; }
+.screen:not(.hidden) .panel, .screen:not(.hidden) .title-wrap { animation: popIn .38s cubic-bezier(.2, .9, .3, 1.15); }
+#hud:not(.hidden) { animation: fadeIn .4s ease-out; }
+#message.show { animation: msgPop .35s cubic-bezier(.2, .9, .3, 1.3); }
+.char-card, .track-card, .size-chip, .menu-btn { transition: transform .15s ease, box-shadow .15s ease, background-color .2s ease; }
+.char-card:active, .track-card:active, .size-chip:active { transform: scale(.97); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 button { font-family: inherit; cursor: pointer; }
 
 /* ---------- Screens ---------- */
