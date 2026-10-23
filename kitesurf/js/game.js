@@ -59,9 +59,17 @@ const sun = new THREE.DirectionalLight(0xffffff, 0.75);
 sun.position.set(0.5, 1, 0.35);
 scene.add(sun);
 
+// Gemeinsame Werte für die Anime-Konturen (Bildschirmauflösung und Nebel)
+const OUTLINE = {
+  uRes: { value: new THREE.Vector2(1, 1) },
+  uFogColor: { value: new THREE.Color(0xd9f6ff) },
+  uFogNear: { value: 260 },
+  uFogFar: { value: 950 },
+};
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   renderer.setSize(w, h, false);
+  renderer.getDrawingBufferSize(OUTLINE.uRes.value);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
 }
@@ -69,19 +77,79 @@ window.addEventListener('resize', resize);
 resize();
 
 // Toon-Shading (3 Stufen) für den runden Comic-Look
+// Weiche Cel-Schattierung: drei Helligkeitsstufen mit fließenden Kanten dazwischen
 const gradTex = (() => {
-  const d = new Uint8Array([120, 120, 120, 255, 195, 195, 195, 255, 255, 255, 255, 255]);
-  const t = new THREE.DataTexture(d, 3, 1);
-  t.minFilter = t.magFilter = THREE.NearestFilter;
+  const v = [125, 125, 125, 190, 190, 245, 255, 255];
+  const d = new Uint8Array(v.length * 4);
+  v.forEach((x, i) => { d.set([x, x, x, 255], i * 4); });
+  const t = new THREE.DataTexture(d, v.length, 1);
+  t.minFilter = t.magFilter = THREE.LinearFilter;
   t.generateMipmaps = false;
   t.needsUpdate = true;
   return t;
 })();
+// Heller Lichtsaum an den Rändern (Rim-Light), typisch für Anime-Shading
+function animeShade(shader) {
+  shader.fragmentShader = shader.fragmentShader.replace('#include <output_fragment>', `
+    float rimF = 1.0 - max(dot(normal, normalize(vViewPosition)), 0.0);
+    outgoingLight += vec3(1.0, 0.98, 0.92) * 0.22 * smoothstep(0.55, 0.85, rimF);
+    #include <output_fragment>`);
+}
+function toonMat(params) {
+  const m = new THREE.MeshToonMaterial(Object.assign({ gradientMap: gradTex }, params));
+  m.onBeforeCompile = animeShade;
+  return m;
+}
 const matCache = new Map();
 function toon(color, extra) {
   const key = color + (extra ? JSON.stringify(extra) : '');
-  if (!matCache.has(key)) matCache.set(key, new THREE.MeshToonMaterial(Object.assign({ color, gradientMap: gradTex }, extra)));
+  if (!matCache.has(key)) matCache.set(key, toonMat(Object.assign({ color }, extra)));
   return matCache.get(key);
+}
+
+// Konturen: Rückseiten werden im Bildschirm um ein paar Pixel nach außen geschoben
+// (gleich breite Linien, in der Ferne dünner und vom Nebel verschluckt)
+function outlineMaterial(color, px, fogFree) {
+  const pr = renderer.getPixelRatio();
+  return new THREE.ShaderMaterial({
+    uniforms: Object.assign({ uColor: { value: new THREE.Color(color) }, uWidth: { value: px * pr } }, OUTLINE,
+      fogFree ? { uFogNear: { value: 1e5 }, uFogFar: { value: 2e5 } } : {}),
+    vertexShader: `
+      uniform float uWidth; uniform vec2 uRes; varying float vDist;
+      void main() {
+        mat4 mv = modelViewMatrix;
+        #ifdef USE_INSTANCING
+          mv = mv * instanceMatrix;
+        #endif
+        vec4 view = mv * vec4(position, 1.0);
+        vDist = -view.z;
+        vec4 clip = projectionMatrix * view;
+        vec2 dir = (projectionMatrix * vec4(normalize(mat3(mv) * normal), 0.0)).xy;
+        float l = length(dir);
+        dir = l > 1e-5 ? dir / l : vec2(0.0);
+        float w = uWidth * clamp(45.0 / max(vDist, 1.0), 0.3, 1.0);
+        clip.xy += dir * w * 2.0 / uRes * clip.w;
+        gl_Position = clip;
+      }`,
+    fragmentShader: `
+      uniform vec3 uColor, uFogColor; uniform float uFogNear, uFogFar; varying float vDist;
+      void main() { gl_FragColor = vec4(mix(uColor, uFogColor, smoothstep(uFogNear, uFogFar, vDist)), 1.0); }`,
+    side: THREE.BackSide,
+  });
+}
+const OUTLINE_INK = outlineMaterial(0x1b2a4a, 2.4);
+const OUTLINE_SCENE = outlineMaterial(0x24406a, 1.8);
+const OUTLINE_CLOUD = outlineMaterial(0x8fb6e0, 1.6, true);
+// Hängt an alle (nicht transparenten, nicht winzigen) Meshes eines Objekts eine Kontur
+function addOutline(obj, mat = OUTLINE_INK, minScale = 0.16) {
+  const list = [];
+  obj.traverse((m) => { if (m.isMesh && !m.material.transparent && !m.userData.noOutline && Math.max(m.scale.x, m.scale.y, m.scale.z) >= minScale) list.push(m); });
+  for (const m of list) {
+    const o = new THREE.Mesh(m.geometry, mat);
+    o.userData.noOutline = true;
+    m.add(o);
+  }
+  return obj;
 }
 const GEO = {
   sphere: new THREE.SphereGeometry(1, 20, 14),
@@ -115,6 +183,10 @@ class Batch {
       g.list.forEach((mtx, i) => im.setMatrixAt(i, mtx));
       im.instanceMatrix.needsUpdate = true;
       parent.add(im);
+      // Konturen für die Deko (Wolken mit heller Linie)
+      const ol = new THREE.InstancedMesh(g.geo, g.mat.fog === false ? OUTLINE_CLOUD : OUTLINE_SCENE, g.list.length);
+      ol.instanceMatrix = im.instanceMatrix;
+      parent.add(ol);
     }
   }
 }
@@ -228,8 +300,11 @@ function skyTexture(c1, c2) {
   const c = document.createElement('canvas'); c.width = 2; c.height = 256;
   const g = c.getContext('2d');
   const gr = g.createLinearGradient(0, 0, 0, 256);
-  gr.addColorStop(0, '#' + new THREE.Color(c1).getHexString());
-  gr.addColorStop(1, '#' + new THREE.Color(c2).getHexString());
+  const top = new THREE.Color(c1).multiplyScalar(0.72), mid = new THREE.Color(c1), low = new THREE.Color(c1).lerp(new THREE.Color(c2), 0.6);
+  gr.addColorStop(0, '#' + top.getHexString());          // tiefes Blau oben
+  gr.addColorStop(0.45, '#' + mid.getHexString());
+  gr.addColorStop(0.8, '#' + low.getHexString());
+  gr.addColorStop(1, '#' + new THREE.Color(c2).getHexString());   // heller Horizont
   g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
   return new THREE.CanvasTexture(c);
 }
@@ -278,6 +353,7 @@ function buildWorld(def) {
   // --- Himmel & Nebel
   scene.background = skyTexture(def.sky[0], def.sky[1]);
   scene.fog = new THREE.Fog(def.sky[1], 260, 950);
+  OUTLINE.uFogColor.value.set(def.sky[1]);
 
   // --- Inseln planen (abseits der Strecke)
   const spanX = path.maxX - path.minX, spanZ = path.maxZ - path.minZ;
@@ -617,7 +693,7 @@ function buildTwintipGeometry(c1, c2) {
 function buildTwintip(boardDef, footColor) {
   const g = new THREE.Group();
   g.position.y = 0.12;
-  g.add(new THREE.Mesh(buildTwintipGeometry(boardDef.c1, boardDef.c2), new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradTex, side: THREE.DoubleSide })));
+  g.add(new THREE.Mesh(buildTwintipGeometry(boardDef.c1, boardDef.c2), toonMat({ vertexColors: true, side: THREE.DoubleSide })));
   for (const sz of [-1, 1]) {
     const z = sz * (BOARD_L / 2 - 0.3), y = boardY(sz * 0.8) - 0.15;
     for (const sx of [-1, 1]) { const f = new THREE.Mesh(finGeo, toon(0x1a1a2e)); f.position.set(sx * BOARD_W * 0.3, y, z); g.add(f); }
@@ -738,14 +814,24 @@ function buildRiderMesh(def, kiteDef, boardDef) {
     }
   }
 
+  addOutline(root);
   const shield = new THREE.Mesh(GEO.sphere, shieldMat);
   shield.scale.setScalar(2.6); shield.position.y = 1.4; shield.visible = false;
   root.add(shield);
 
   const kite = new THREE.Group();
   const sh = kiteDef.shape;
-  const canopy = new THREE.Mesh(buildKiteGeometry(kiteDef.c1, kiteDef.c2, sh), new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradTex, side: THREE.DoubleSide }));
+  const canopy = new THREE.Mesh(buildKiteGeometry(kiteDef.c1, kiteDef.c2, sh), toonMat({ vertexColors: true, side: THREE.DoubleSide }));
   kite.add(canopy);
+  // Fronttube (wie bei echten Tube-Kites), Hinterkante und Streben als dunkle Konturen
+  const edgePt = (u, front) => {
+    const a = u * sh.A, chord = sh.chord * (1 - 0.45 * u * u);
+    return new THREE.Vector3(Math.sin(a) * sh.R, Math.cos(a) * sh.R - sh.R, front ? chord * 0.6 : -chord * 0.4);
+  };
+  const tube = (pts, r) => new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, r, 6), toon(0x1b2a4a));
+  const span = (front) => Array.from({ length: 13 }, (_, i) => edgePt(i / 12 * 2 - 1, front));
+  kite.add(tube(span(true), 0.13), tube(span(false), 0.045));
+  for (const u of [-1, -0.5, 0, 0.5, 1]) kite.add(tube([edgePt(u, true), edgePt(u, false)], 0.05));
   // Leinen-Ansatzpunkte an den Kite-Spitzen
   const tipX = Math.sin(sh.A) * sh.R * 0.98, tipY = Math.cos(sh.A) * sh.R - sh.R;
   return { root, tg, board, body, head, shield, kite, tipX, tipY };
@@ -1136,15 +1222,15 @@ function spawnProjectile(type, owner) {
   const p = { type, owner, life: 0, x: owner.x, z: owner.z, y: 1, h: owner.h, speed: 0, target: null };
   if (type === 'torpedo') {
     p.x += owner.fx * 3.5; p.z += owner.fz * 3.5; p.speed = owner.speed + 48; p.maxLife = 3.2;
-    p.mesh = projGeo.bomb();
+    p.mesh = addOutline(projGeo.bomb());
   } else if (type === 'puffer') {
     const ahead = riders.filter((o) => o !== owner && o.rank < owner.rank && !o.finished).sort((a, b) => b.rank - a.rank)[0];
     p.target = ahead || null;
     p.x += owner.fx * 3.5; p.z += owner.fz * 3.5; p.speed = Math.max(owner.speed + 30, 62); p.maxLife = 8;
-    p.mesh = projGeo.puffer();
+    p.mesh = addOutline(projGeo.puffer());
   } else {
     p.x -= owner.fx * 5; p.z -= owner.fz * 5; p.y = 0.2; p.maxLife = 40;
-    p.mesh = projGeo.seaweed();
+    p.mesh = addOutline(projGeo.seaweed(), OUTLINE_SCENE);
   }
   p.mesh.position.set(p.x, p.y, p.z);
   scene.add(p.mesh);
@@ -2017,7 +2103,7 @@ const canFullscreen = !!(document.documentElement.requestFullscreen || document.
 const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) || navigator.standalone;
 let fsPending = false, fsHintShown = false;
 function inFullscreen() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
-function onOrientation() {
+function onOrientation(initial) {
   if (!isTouch || isStandalone || !isLandscape() || inFullscreen()) { fsPending = false; return; }
   if (!canFullscreen) {                        // iPhone: kein Vollbild im Browser möglich
     if (!fsHintShown) {
@@ -2030,7 +2116,7 @@ function onOrientation() {
     return;
   }
   fsPending = true;
-  goFullscreen();
+  if (initial !== true) goFullscreen();   // beim Laden fehlt die Berührung: erst beim Antippen
 }
 window.addEventListener('orientationchange', () => setTimeout(onOrientation, 250));
 window.addEventListener('resize', onOrientation);
@@ -2174,6 +2260,6 @@ window.KiteKart = {
 try { if (isTouch && localStorage.getItem('kk_tilt') === '1' && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') enableTilt(); } catch (e) { /* egal */ }
 startMenuDemo();
 show('menu-title');
-onOrientation();
+onOrientation(true);
 requestAnimationFrame(frame);
 })();
