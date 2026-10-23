@@ -2059,12 +2059,10 @@ function showWindReport() {
   const round = cup && CUP_ROUNDS[cup.round];
   const def = TRACKS[round ? round.track : selTrack];
   windKn = Math.round(def.knots[0] + Math.random() * (def.knots[1] - def.knots[0]));
-  const ideal = idealKiteSize(windKn), b = beaufort(windKn);
+  const b = beaufort(windKn);
   $('wind-title').textContent = `Windbericht · ${def.name}` + (round ? ` · ${round.name}` : '');
   $('wr-kn').textContent = windKn;
   $('wr-bft').textContent = `${b.bft} Bft · ${b.name}`;
-  const lo = nearestSize(ideal * 0.92), hi = nearestSize(ideal * 1.08);
-  $('wr-ideal').textContent = lo === hi ? `${lo} m²` : `${lo}–${hi} m²`;
   const row = $('size-row');
   row.innerHTML = '';
   for (const s of KITE_SIZES) {

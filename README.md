@@ -84,8 +84,8 @@ Sensordaten – dafür das Spiel direkt im Handy-Browser öffnen (z. B. über Gi
 
 ## Wind und Kitegröße
 
-Vor jedem Rennen kommt ein **Windbericht**: Windstärke in Knoten und Beaufort sowie die empfohlene
-Kitegröße. Du wählst die Größe (6–15 m²) selbst – die Knöpfe verraten nicht, was gut oder schlecht ist. Grundlage ist die Größentabelle von Airush für
+Vor jedem Rennen kommt ein **Windbericht** mit der Windstärke in Knoten und Beaufort. Die passende
+Kitegröße (6–15 m²) musst du selbst einschätzen – das Spiel gibt keine Empfehlung. Grundlage ist die Größentabelle von Airush für
 Fahrer mit 70–80 kg (10–13 kn: 13–15 m², 14–17 kn: 11–12 m², 18–22 kn: 9–10 m², 23–28 kn: 7–8 m²);
 alle Fahrer gelten als ca. 75 kg schwer.
 
