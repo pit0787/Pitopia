@@ -1,0 +1,44 @@
+# Testlauf: erzeugt mit dem OpenAI-Secret vier Hörproben für Rocko (Kind, Jugend, Erwachsen, Senior)
+# und legt sie im Ordner tts-test/ auf diesem Branch ab.
+name: TTS-Test Rocko
+on:
+  push:
+    branches: [claude/tts-test]
+    paths: ['.github/workflows/tts-test.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  tts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Hörproben erzeugen
+        env:
+          KEY: ${{ secrets.ROCCOGITAREDI || secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then echo "::error::Kein OpenAI-Secret gefunden. Erwartet wird ROCCOGITAREDI (Actions → Repository secret)."; exit 1; fi
+          mkdir -p tts-test
+          say() { # $1 Datei, $2 Stimme, $3 Sprechanweisung, $4 Text
+            jq -n --arg v "$2" --arg i "$3" --arg t "$4" \
+              '{model:"gpt-4o-mini-tts",voice:$v,instructions:$i,input:$t,response_format:"mp3"}' > req.json
+            code=$(curl -sS -o "tts-test/$1.mp3" -w "%{http_code}" https://api.openai.com/v1/audio/speech \
+              -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d @req.json)
+            echo "$1: HTTP $code"
+            if [ "$code" != "200" ]; then cat "tts-test/$1.mp3"; echo; rm -f "tts-test/$1.mp3"; exit 1; fi
+          }
+          say kind coral "Sprich Deutsch wie ein fröhliches, aufgewecktes Kind von etwa sieben Jahren: hell, verspielt, langsam und deutlich." \
+            "Hallo! Ich bin Rocko. Weißt du noch, wie die Saiten heißen? Wir spielen ein kleines Ratespiel!"
+          say jugend verse "Sprich Deutsch wie ein lockerer, motivierter Jugendlicher von etwa vierzehn Jahren, frech und gut gelaunt." \
+            "Yo! Bühne frei für das Garagen-Riff. Ich spiel's dir einmal vor, dann bist du dran."
+          say erwachsen ash "Sprich Deutsch wie ein lässiger, freundlicher Rockmusiker um die dreißig, mit etwas Energie." \
+            "Willkommen zurück! Erst kurz aufwärmen und schauen, was von Lektion eins noch sitzt."
+          say senior sage "Sprich Deutsch ruhig, warm und langsam, sehr deutlich für ältere Zuhörer." \
+            "Lass dir Zeit. Die fünfzehn Minuten sind nur ein Richtwert. Du kannst jederzeit eine Pause machen."
+      - name: Hörproben speichern
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tts-test
+          git commit -m "TTS-Test: Hörproben für Rocko [skip ci]"
+          git push

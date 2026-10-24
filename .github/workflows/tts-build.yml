@@ -1,0 +1,26 @@
+# Vertont alle Sätze von Rocko (tts/catalog.json) mit dem OpenAI-Secret und legt
+# die Stimm-Pakete unter tts/out/ auf diesem Branch ab.
+name: Rocko vertonen
+on:
+  push:
+    branches: [claude/tts-test]
+    paths: ['tts/catalog.json', 'tts/generate.py', '.github/workflows/tts-build.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: ffmpeg bereitstellen
+        run: which ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+      - name: Sätze vertonen (speichert jede Stimme sofort)
+        env:
+          KEY: ${{ secrets.ROCCOGITAREDI }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python3 tts/generate.py
+          git commit --allow-empty -q -m "Rocko vertont: fertig [skip ci]" && git push -q
