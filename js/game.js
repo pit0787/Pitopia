@@ -416,6 +416,7 @@ function buildWorld(def) {
       uShallow: { value: new THREE.Color(def.water[1]) },
       uSand: { value: new THREE.Color(def.sand) },
       uFog: { value: new THREE.Color(def.sky[1]) },
+      uSun: { value: SUN_DIR },
     },
     vertexShader: `
       uniform float uTime;
@@ -428,7 +429,7 @@ function buildWorld(def) {
       }`,
     fragmentShader: `
       uniform float uTime; uniform sampler2D uTrack; uniform vec4 uBounds;
-      uniform vec3 uDeep, uShallow, uSand, uFog;
+      uniform vec3 uDeep, uShallow, uSand, uFog, uSun;
       varying vec3 vW; varying float vH;
       void main() {
         vec2 uv = (vW.xz - uBounds.xy) / uBounds.zw;
@@ -440,6 +441,16 @@ function buildWorld(def) {
         col = mix(col, uSand, smoothstep(0.6, 0.72, g));
         col = mix(col, vec3(1.0), m.b * 0.5);
         col += 0.09 * smoothstep(0.2, 0.5, vH);
+        // Feine Wellenlinien (anime-typische helle Konturen auf dem Wasser)
+        float wl = sin(vW.x * 0.13 + sin(vW.z * 0.05 + uTime * 0.3) * 2.5 + uTime * 0.6);
+        float wl2 = sin(vW.z * 0.17 + sin(vW.x * 0.06 - uTime * 0.25) * 2.0 - uTime * 0.5);
+        col += (0.06 * smoothstep(0.94, 1.0, wl) + 0.04 * smoothstep(0.95, 1.0, wl2)) * (1.0 - smoothstep(0.3, 0.6, m.g));
+        // Sonnenglitzern: Spiegelung der tiefen Sonne auf kleinen Wellen
+        float hx = 0.028 * cos(vW.x * 0.08 + uTime * 1.3) + 0.07 * cos(vW.x * 0.9 + vW.z * 0.3 + uTime * 2.6);
+        float hz = -0.0275 * cos(vW.z * 0.11 - uTime * 1.1) + 0.07 * cos(vW.z * 1.1 - vW.x * 0.2 + uTime * 2.2);
+        vec3 wn = normalize(vec3(-hx, 1.0, -hz));
+        float spec = pow(max(dot(reflect(-uSun, wn), normalize(cameraPosition - vW)), 0.0), 90.0);
+        col += vec3(1.0, 0.96, 0.82) * smoothstep(0.3, 0.6, spec) * 0.85;
         float sp = sin(vW.x * 0.45 + uTime * 1.7 + sin(vW.z * 0.21)) * sin(vW.z * 0.4 - uTime * 1.3 + sin(vW.x * 0.17));
         col = mix(col, vec3(1.0), step(0.965, sp) * 0.55);
         float d = distance(vW, cameraPosition);
@@ -473,6 +484,21 @@ function buildWorld(def) {
       const a = rnd() * TAU;
       grp.add(ball(0xb7a99a, 1.5 + rnd() * 2, Math.sin(a) * is.r * 0.85, 0.5, Math.cos(a) * is.r * 0.85, 1, 0.7, 1));
     }
+    // Strandschirme am Sandrand
+    if (is.r > 13) {
+      for (let k = 0; k < 2; k++) {
+        const a = rnd() * TAU, d = is.r * 0.78, ux = Math.sin(a) * d, uz = Math.cos(a) * d;
+        const pole = new THREE.Mesh(GEO.cyl, toon(0xf4f6fa)); pole.scale.set(0.12, 3, 0.12); pole.position.set(ux, is.r * 0.2 + 1.2, uz);
+        grp.add(pole, ball([0xff4f4f, 0xffd23f, 0x3a7bd5, 0xff7eb6][Math.floor(rnd() * 4)], 1.8, ux, is.r * 0.2 + 2.7, uz, 1, 0.35, 1));
+      }
+    }
+    // Kleine Strandhütte mit Strohdach auf großen Inseln
+    if (is.r > 22) {
+      const a = rnd() * TAU, d = is.r * 0.35, hx = Math.sin(a) * d, hz = Math.cos(a) * d, base = is.r * 0.3;
+      const hut = new THREE.Mesh(GEO.cyl, toon(0xe8c39e)); hut.scale.set(2.4, 3, 2.4); hut.position.set(hx, base + 1.5, hz);
+      const roof = new THREE.Mesh(GEO.cone, toon(0xd9a441)); roof.scale.set(3.4, 2.6, 3.4); roof.position.set(hx, base + 4.2, hz);
+      grp.add(hut, roof, ball(0x6b4226, 0.7, hx + Math.sin(a) * 2.35, base + 1.2, hz + Math.cos(a) * 2.35, 0.9, 1.4, 0.3));
+    }
     batch.bake(grp);
   }
   // Ferne Hügel links und rechts der Strecke
@@ -492,7 +518,9 @@ function buildWorld(def) {
     for (const side of [-1, 1]) {
       const off = side * (W / 2 + 1.5);
       const col = (i / step) % 2 ? 0xff5a4f : (side < 0 ? 0xffffff : 0xffd23f);
-      batch.bake(ball(col, 0.85, path.x[i] - path.tz[i] * off, 0.25, path.z[i] + path.tx[i] * off));
+      const bx = path.x[i] - path.tz[i] * off, bz = path.z[i] + path.tx[i] * off;
+      batch.bake(ball(col, 0.85, bx, 0.25, bz));
+      batch.bake(ball(col === 0xffffff ? 0xff5a4f : 0xffffff, 0.42, bx, 1.05, bz));   // Topp der Boje
     }
   }
   // Start- und Ziel-Bogen aus aufblasbaren Kugeln
@@ -587,7 +615,45 @@ function buildWorld(def) {
     }
     batch.bake(cl);
   }
+  // Segelboote in der Ferne
+  for (let k = 0; k < path.L / 500; k++) {
+    const i = Math.floor(rnd() * path.N), off = (rnd() < 0.5 ? -1 : 1) * (W / 2 + 90 + rnd() * 200);
+    const x = path.x[i] - path.tz[i] * off, z = path.z[i] + path.tx[i] * off;
+    if (distToTrack(x, z) < W / 2 + 60 || islands.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + 15)) continue;
+    const boat = new THREE.Group(); boat.position.set(x, 0, z); boat.rotation.y = rnd() * TAU;
+    const mast = new THREE.Mesh(GEO.cyl, toon(0x8a5a3b)); mast.scale.set(0.18, 9, 0.18); mast.position.y = 5;
+    boat.add(ball(0xf4f6fa, 1, 0, 0.4, 0, 1.5, 0.9, 4.2), ball(0x3a7bd5, 1, 0, 0.75, 0, 1.55, 0.25, 4.25), mast,
+      ball([0xffffff, 0xff7eb6, 0xffd23f, 0x8ff0ff][Math.floor(rnd() * 4)], 1, 0, 5.5, -1.3, 0.15, 4.2, 2.3));
+    batch.bake(boat);
+  }
   batch.build(world);
+
+  // Möwen, die über der Strecke kreisen (folgen dem Geschehen)
+  gulls = [];
+  for (let k = 0; k < 6; k++) {
+    const g = new THREE.Group();
+    g.add(ball(0xffffff, 0.5, 0, 0, 0, 0.8, 0.7, 1.6), ball(0xffb81c, 0.18, 0, 0, 0.85, 0.7, 0.6, 1.4));
+    const wings = [];
+    for (const s of [-1, 1]) {
+      const w = new THREE.Group(); w.position.x = s * 0.3;
+      w.add(ball(0xe9eef5, 1, s * 1.1, 0, 0, 1.2, 0.08, 0.45), ball(0x2b3a55, 0.4, s * 2.2, 0, 0, 0.6, 0.08, 0.4));
+      g.add(w); wings.push(w);
+    }
+    world.add(g);
+    gulls.push({ g, wings, phase: rnd() * TAU, r: 25 + rnd() * 30, h: 22 + rnd() * 14, speed: 0.25 + rnd() * 0.2 });
+  }
+  // Anime-Sonne mit weichem Schein, steht tief im Himmel und spiegelt sich im Wasser
+  if (!sunSprite) {
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const g2 = c.getContext('2d');
+    const gr = g2.createRadialGradient(128, 128, 0, 128, 128, 128);
+    gr.addColorStop(0, 'rgba(255,255,240,1)'); gr.addColorStop(0.18, 'rgba(255,250,220,1)'); gr.addColorStop(0.24, 'rgba(255,240,190,.55)');
+    gr.addColorStop(0.55, 'rgba(255,230,170,.18)'); gr.addColorStop(1, 'rgba(255,230,170,0)');
+    g2.fillStyle = gr; g2.fillRect(0, 0, 256, 256);
+    sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), fog: false, depthWrite: false, transparent: true }));
+    sunSprite.scale.setScalar(420);
+    scene.add(sunSprite);
+  }
 
   // --- Itemboxen: alle ~500 m eine Reihe quer über die Strecke
   itemBoxes = [];
@@ -615,6 +681,22 @@ function buildWorld(def) {
   buildMinimapBase();
 }
 let kiteLines = null;
+let gulls = [], sunSprite = null;
+const SUN_DIR = new THREE.Vector3(-0.55, 0.3, -0.78).normalize();   // Richtung zur (tief stehenden) Sonne
+function updateAmbient(dt) {
+  sunSprite.position.copy(camera.position).addScaledVector(SUN_DIR, 1800);
+  const t = player || riders[0];
+  if (!t) return;
+  for (const b of gulls) {
+    b.phase += dt * b.speed;
+    const cx = t.x + Math.sin(t.h) * 70, cz = t.z + Math.cos(t.h) * 70;
+    const x = cx + Math.cos(b.phase) * b.r, z = cz + Math.sin(b.phase) * b.r;
+    b.g.position.set(x, b.h + Math.sin(b.phase * 3) * 1.5, z);
+    b.g.rotation.set(0, Math.atan2(-Math.sin(b.phase), Math.cos(b.phase)) + Math.PI / 2, Math.sin(b.phase) * 0.3);
+    const flap = Math.sin(worldTime * 7 + b.phase * 5) * 0.5;
+    b.wings[0].rotation.z = flap; b.wings[1].rotation.z = -flap;
+  }
+}
 
 // Bodenpunkt und Fahrtrichtung für eine Position auf der Strecke
 // Reststrecke bis zum Ziel in Metern
@@ -712,9 +794,21 @@ function eyes(parent, x, y, z, r = 0.2) {
   for (const s of [-1, 1]) {
     parent.add(ball(0xffffff, r, s * x, y, z));
     parent.add(ball(0x1a1a2e, r * 0.5, s * x, y + r * 0.1, z + r * 0.8));
+    parent.add(ball(0xffffff, r * 0.2, s * x + r * 0.16, y + r * 0.36, z + r * 1.2));   // Glanzpunkt
+  }
+}
+// Rote Bäckchen links und rechts auf einer Kopfkugel (Radius hr, Mitte hy)
+function blush(head, hr, hy = 0) {
+  for (const s of [-1, 1]) {
+    const x = hr * 0.6, y = hy - hr * 0.2, z = Math.sqrt(Math.max(0, hr * hr - x * x - (y - hy) ** 2)) * 0.97;
+    const b = ball(0xff8fa3, 0.13, s * x, y, z, 1.25, 0.65, 0.4);
+    b.rotation.y = s * 0.6;
+    head.add(b);
   }
 }
 
+const harnessGeo = new THREE.TorusGeometry(0.8, 0.1, 6, 22);
+const BLUSH = { penguin: [0.7, 0], seal: [0.7, 0], octopus: [0.85, 0.2], dolphin: [0.68, 0], turtle: [0.62, 0], gull: [0.66, 0] };
 function buildRiderMesh(def, kiteDef, boardDef) {
   const root = new THREE.Group();
   const tg = new THREE.Group();                // Trick-/Sturz-Rotation
@@ -738,6 +832,18 @@ function buildRiderMesh(def, kiteDef, boardDef) {
   const bar = new THREE.Mesh(GEO.cyl, toon(0x2b3a55));
   bar.scale.set(0.06, 1.9, 0.06); bar.rotation.z = Math.PI / 2; bar.position.set(0, 1.62, 1.0);
   body.add(bar);
+  for (const [sx, col] of [[-1, 0xff4f4f], [1, 0x3a7bd5]]) {             // Bar-Enden: links rot, rechts blau
+    const end = new THREE.Mesh(GEO.cyl, toon(col));
+    end.scale.set(0.085, 0.32, 0.085); end.rotation.z = Math.PI / 2; end.position.set(sx * 0.82, 1.62, 1.0);
+    body.add(end);
+  }
+  const harness = new THREE.Mesh(harnessGeo, toon(0x2b3a55));            // Trapez-Gurt um die Hüfte
+  harness.rotation.x = Math.PI / 2; harness.position.set(0, 1.0, 0); harness.scale.set(1, 0.85, 1);
+  body.add(harness);
+  body.add(ball(0xc9d3e0, 0.16, 0, 1.0, 0.8, 1.4, 0.7, 0.6));             // Spreizhaken
+  const loop = new THREE.Mesh(GEO.cyl, toon(0x1a1a2e));                    // Chickenloop zur Bar
+  loop.scale.set(0.03, 0.62, 0.03); loop.position.set(0, 1.31, 0.9); loop.rotation.x = Math.atan2(0.2, 0.62);
+  body.add(loop);
 
   switch (def.species) {
     case 'penguin': {
@@ -814,6 +920,7 @@ function buildRiderMesh(def, kiteDef, boardDef) {
     }
   }
 
+  if (BLUSH[def.species]) blush(head, ...BLUSH[def.species]);
   addOutline(root);
   const shield = new THREE.Mesh(GEO.sphere, shieldMat);
   shield.scale.setScalar(2.6); shield.position.y = 1.4; shield.visible = false;
@@ -1930,6 +2037,7 @@ function simulate(dt) {
   kiteLines.geometry.attributes.position.needsUpdate = true;
   updateSpray(dt);
   waterMat.uniforms.uTime.value = worldTime;
+  updateAmbient(dt);
 
   if (state === 'race' && player) {
     raceTime += dt;
@@ -1981,6 +2089,7 @@ function frame(now) {
     kiteLines.geometry.attributes.position.needsUpdate = true;
     updateSpray(dt);
     waterMat.uniforms.uTime.value = worldTime;
+    updateAmbient(dt);
     input.jump = false; input.item = false;
   } else if (state !== 'paused' && state !== 'results') {
     simulate(dt);
